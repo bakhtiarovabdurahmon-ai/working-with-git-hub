@@ -1,14 +1,658 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Робот-Тренер | Домашние тренировки</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#161b22;
+    --accent:#00e0a4;
+    --accent2:#00b8ff;
+    --danger:#ff5470;
+    --text:#e6edf3;
+    --muted:#8b949e;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:radial-gradient(circle at 50% 0%, #1a2230 0%, var(--bg) 60%);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:20px 12px 60px;
+  }
+  .app{
+    width:100%;
+    max-width:480px;
+  }
+  .header{
+    text-align:center;
+    margin-bottom:18px;
+  }
+  .header h1{
+    font-size:22px;
+    margin:8px 0 0;
+  }
+  .robot-face{
+    font-size:56px;
+    display:inline-block;
+    animation:float 3s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0);}
+    50%{transform:translateY(-6px);}
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid #21262d;
+    border-radius:var(--radius);
+    padding:20px;
+    margin-bottom:16px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+  }
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  .field{margin-bottom:16px;}
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  input[type=number]{
+    width:100%;
+    padding:12px 14px;
+    background:#0d1117;
+    border:1px solid #30363d;
+    border-radius:10px;
+    color:var(--text);
+    font-size:16px;
+  }
+  input[type=number]:focus{
+    outline:none;
+    border-color:var(--accent);
+  }
+  .hint{font-size:12px;color:var(--muted);margin-top:4px;}
+  .error{color:var(--danger);font-size:13px;margin-top:8px;min-height:16px;}
+
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    border-radius:12px;
+    padding:14px 18px;
+    font-size:16px;
+    font-weight:600;
+    width:100%;
+  }
+  .btn-primary{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#04120d;
+  }
+  .btn-primary:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    filter:grayscale(.4);
+  }
+  .btn-secondary{
+    background:transparent;
+    color:var(--text);
+    border:1px solid #30363d;
+    margin-top:10px;
+  }
+
+  .speech{
+    background:#0d1117;
+    border:1px solid #21262d;
+    border-radius:12px;
+    padding:14px 16px;
+    font-size:15px;
+    line-height:1.4;
+    position:relative;
+  }
+  .speech::before{
+    content:"";
+    position:absolute;
+    top:-8px;
+    left:24px;
+    border-width:0 8px 8px 8px;
+    border-style:solid;
+    border-color:transparent transparent #21262d transparent;
+  }
+  .robot-row{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    margin-bottom:14px;
+  }
+  .robot-row .robot-face{font-size:36px;}
+  .robot-row .speech{flex:1;}
+
+  .stat-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin:14px 0;
+  }
+  .stat{
+    background:#0d1117;
+    border:1px solid #21262d;
+    border-radius:10px;
+    padding:10px 12px;
+    text-align:center;
+  }
+  .stat .v{font-size:20px;font-weight:700;color:var(--accent);}
+  .stat .l{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .plan-list{list-style:none;padding:0;margin:0;}
+  .plan-list li{
+    display:flex;
+    justify-content:space-between;
+    padding:10px 0;
+    border-bottom:1px solid #21262d;
+    font-size:14px;
+  }
+  .plan-list li:last-child{border-bottom:none;}
+  .plan-list .ex-name{font-weight:600;}
+  .plan-list .ex-detail{color:var(--muted);}
+
+  .progress-bar-outer{
+    width:100%;
+    height:8px;
+    background:#0d1117;
+    border-radius:5px;
+    overflow:hidden;
+    margin:10px 0 2px;
+  }
+  .progress-bar-inner{
+    height:100%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    width:0%;
+    transition:width .3s linear;
+  }
+  .progress-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:12px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+
+  .exercise-box{
+    text-align:center;
+    padding:10px 0 4px;
+  }
+  .exercise-emoji{font-size:64px;}
+  .exercise-name{
+    font-size:24px;
+    font-weight:700;
+    margin:8px 0 4px;
+  }
+  .exercise-target{
+    font-size:16px;
+    color:var(--accent);
+    font-weight:600;
+  }
+  .timer-ring{
+    font-size:44px;
+    font-weight:800;
+    margin:14px 0;
+    color:var(--accent2);
+    font-variant-numeric:tabular-nums;
+  }
+  .phase-label{
+    font-size:13px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    color:var(--muted);
+  }
+
+  .final-emoji{font-size:64px;text-align:center;display:block;margin-bottom:6px;}
+  a.reset-link{color:var(--muted);font-size:12px;}
+</style>
 </head>
 <body>
-    <h1>
-        usman git status
-        git log nechta bayroq koyilganini korsatadi
-    </h1>
+<div class="app">
+  <div class="header">
+    <span class="robot-face">🤖</span>
+    <h1>Робот-Тренер</h1>
+  </div>
+
+  <!-- ЭКРАН 1: АНКЕТА -->
+  <div class="screen active" id="screen-form">
+    <div class="card">
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech">Привет! Я твой домашний робот-тренер. Расскажи о себе — и я составлю тренировку, от которой тебе не отвертеться.</div>
+      </div>
+
+      <div class="field">
+        <label for="weight">Вес (кг)</label>
+        <input type="number" id="weight" placeholder="напр. 70" min="20" max="300">
+      </div>
+      <div class="field">
+        <label for="height">Рост (см)</label>
+        <input type="number" id="height" placeholder="напр. 175" min="100" max="250">
+      </div>
+      <div class="field">
+        <label for="age">Возраст (лет)</label>
+        <input type="number" id="age" placeholder="напр. 28" min="8" max="100">
+      </div>
+      <div class="field">
+        <label for="freetime">Свободное время сегодня (мин)</label>
+        <input type="number" id="freetime" placeholder="напр. 20" min="5" max="120">
+        <div class="hint">Столько времени я выделю на тренировку.</div>
+      </div>
+
+      <div class="error" id="form-error"></div>
+      <button class="btn-primary" id="btn-generate">Составить тренировку</button>
+    </div>
+  </div>
+
+  <!-- ЭКРАН 2: ПЛАН -->
+  <div class="screen" id="screen-plan">
+    <div class="card">
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech" id="plan-speech"></div>
+      </div>
+      <div class="stat-grid" id="plan-stats"></div>
+      <ul class="plan-list" id="plan-list"></ul>
+    </div>
+    <button class="btn-primary" id="btn-start-workout">Начать тренировку 💪</button>
+    <button class="btn-secondary" id="btn-back-to-form">Изменить данные</button>
+  </div>
+
+  <!-- ЭКРАН 3: ТРЕНИРОВКА -->
+  <div class="screen" id="screen-workout">
+    <div class="card">
+      <div class="progress-label">
+        <span id="wo-progress-text">Упражнение 1/1</span>
+        <span id="wo-time-left"></span>
+      </div>
+      <div class="progress-bar-outer"><div class="progress-bar-inner" id="wo-progress-bar"></div></div>
+
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech" id="wo-speech">Поехали!</div>
+      </div>
+
+      <div class="exercise-box">
+        <div class="phase-label" id="wo-phase">УПРАЖНЕНИЕ</div>
+        <div class="exercise-emoji" id="wo-emoji">🏋️</div>
+        <div class="exercise-name" id="wo-name">—</div>
+        <div class="exercise-target" id="wo-target">—</div>
+        <div class="timer-ring" id="wo-timer"></div>
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-wo-action">Готово</button>
+  </div>
+
+  <!-- ЭКРАН 4: ФИНИШ -->
+  <div class="screen" id="screen-done">
+    <div class="card">
+      <span class="final-emoji">🏆</span>
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech" id="done-speech"></div>
+      </div>
+      <div class="stat-grid" id="done-stats"></div>
+    </div>
+    <button class="btn-primary" id="btn-again">Тренироваться снова</button>
+    <button class="btn-secondary" id="btn-restart-form">Заполнить данные заново</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "robot-trainer-profile";
+
+  var EXERCISES = [
+    {name:"Приседания",       emoji:"🦵", type:"reps", baseReps:15, met:"легко для ног"},
+    {name:"Отжимания",        emoji:"💪", type:"reps", baseReps:10, met:"верх тела"},
+    {name:"Выпады",           emoji:"🚶", type:"reps", baseReps:12, met:"ноги и баланс"},
+    {name:"Скручивания",      emoji:"🔥", type:"reps", baseReps:15, met:"пресс"},
+    {name:"Ягодичный мостик", emoji:"🍑", type:"reps", baseReps:15, met:"ягодицы"},
+    {name:"Супермен",         emoji:"🦸", type:"reps", baseReps:12, met:"спина"},
+    {name:"Планка",           emoji:"🧘", type:"time", baseSec:30,  met:"кор"},
+    {name:"Прыжки на месте",  emoji:"⭐", type:"time", baseSec:30,  met:"кардио"},
+    {name:"Высокие колени",   emoji:"🏃", type:"time", baseSec:25,  met:"кардио"},
+    {name:"Присед у стены",   emoji:"🧱", type:"time", baseSec:25,  met:"выносливость ног"}
+  ];
+
+  var GENTLE_ONLY = ["Приседания","Отжимания","Скручивания","Ягодичный мостик","Супермен","Планка","Присед у стены"];
+
+  var PHRASES_START = [
+    "Не сдавайся, я слежу за тобой!",
+    "Твоё тело скажет спасибо через 20 минут.",
+    "Работаем чётко, без халтуры!",
+    "Я робот, усталости не знаю — и ты пока тоже не будешь.",
+    "Начинаем! Дыши ровно."
+  ];
+  var PHRASES_MID = [
+    "Ещё немного, ты справляешься!",
+    "Держи темп, я считаю каждую секунду.",
+    "Красиво! Продолжай в том же духе.",
+    "Терпи — результат уже близко.",
+    "Не останавливайся на середине пути!"
+  ];
+  var PHRASES_REST = [
+    "Отдышись, но не расслабляйся — дальше больше.",
+    "Пей воду, если нужно. Через пару секунд продолжим.",
+    "Хорошая работа. Готовься к следующему раунду.",
+    "Пауза закончится — и снова в бой."
+  ];
+  var PHRASES_DONE = [
+    "Ты справился! Я горжусь тобой, человек.",
+    "Тренировка окончена. Отличная работа!",
+    "Миссия выполнена. Мышцы поблагодарят завтра.",
+    "Ты сильнее, чем был час назад."
+  ];
+
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function fmtTime(sec){
+    var m = Math.floor(sec/60), s = sec%60;
+    return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
+  }
+
+  var screens = {
+    form: document.getElementById("screen-form"),
+    plan: document.getElementById("screen-plan"),
+    workout: document.getElementById("screen-workout"),
+    done: document.getElementById("screen-done")
+  };
+  function showScreen(name){
+    Object.keys(screens).forEach(function(k){
+      screens[k].classList.toggle("active", k===name);
+    });
+    window.scrollTo(0,0);
+  }
+
+  // ---------- ЭКРАН 1: форма ----------
+  var elWeight = document.getElementById("weight");
+  var elHeight = document.getElementById("height");
+  var elAge = document.getElementById("age");
+  var elFreetime = document.getElementById("freetime");
+  var elFormError = document.getElementById("form-error");
+
+  (function restoreProfile(){
+    try{
+      var saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+      if(saved){
+        elWeight.value = saved.weight || "";
+        elHeight.value = saved.height || "";
+        elAge.value = saved.age || "";
+        elFreetime.value = saved.freeTime || "";
+      }
+    }catch(e){}
+  })();
+
+  var profile = null;
+  var plan = null;
+
+  document.getElementById("btn-generate").addEventListener("click", function(){
+    var weight = parseFloat(elWeight.value);
+    var height = parseFloat(elHeight.value);
+    var age = parseInt(elAge.value, 10);
+    var freeTime = parseInt(elFreetime.value, 10);
+
+    if(!weight || weight<20 || weight>300){ elFormError.textContent = "Укажи корректный вес (20–300 кг)."; return; }
+    if(!height || height<100 || height>250){ elFormError.textContent = "Укажи корректный рост (100–250 см)."; return; }
+    if(!age || age<8 || age>100){ elFormError.textContent = "Укажи корректный возраст (8–100 лет)."; return; }
+    if(!freeTime || freeTime<5 || freeTime>120){ elFormError.textContent = "Свободное время должно быть от 5 до 120 минут."; return; }
+    elFormError.textContent = "";
+
+    profile = {weight:weight, height:height, age:age, freeTime:freeTime};
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+
+    plan = generatePlan(profile);
+    renderPlan(plan, profile);
+    showScreen("plan");
+  });
+
+  // ---------- Генерация плана ----------
+  function generatePlan(p){
+    var bmi = p.weight / Math.pow(p.height/100, 2);
+    var level = "средний";
+    if(p.age >= 55 || bmi >= 30 || p.age < 12){
+      level = "лёгкий";
+    } else if(p.age <= 35 && bmi < 27 && p.age >= 14){
+      level = "интенсивный";
+    }
+
+    var pool = (level === "лёгкий")
+      ? EXERCISES.filter(function(e){ return GENTLE_ONLY.indexOf(e.name) !== -1; })
+      : EXERCISES.slice();
+
+    var perExerciseMinutes = 3.2;
+    var count = Math.round(p.freeTime / perExerciseMinutes);
+    count = Math.max(3, Math.min(8, count));
+
+    var shuffled = pool.slice().sort(function(){ return Math.random()-0.5; });
+    var chosen = [];
+    for(var i=0; i<count; i++){
+      chosen.push(shuffled[i % shuffled.length]);
+    }
+
+    var levelMult = {"лёгкий":0.7, "средний":1, "интенсивный":1.3}[level];
+    var sets = level === "лёгкий" ? 2 : (level === "интенсивный" ? 3 : 2);
+    var restSec = level === "лёгкий" ? 25 : (level === "интенсивный" ? 15 : 20);
+
+    var items = chosen.map(function(ex){
+      if(ex.type === "reps"){
+        var reps = Math.max(6, Math.round(ex.baseReps * levelMult));
+        return {name:ex.name, emoji:ex.emoji, type:"reps", reps:reps, sets:sets, restSec:restSec};
+      } else {
+        var sec = Math.max(15, Math.round(ex.baseSec * levelMult));
+        return {name:ex.name, emoji:ex.emoji, type:"time", seconds:sec, sets:1, restSec:restSec};
+      }
+    });
+
+    return {level:level, bmi:bmi, restSec:restSec, items:items};
+  }
+
+  function renderPlan(plan, p){
+    document.getElementById("plan-speech").textContent =
+      "Твой уровень сегодня: " + plan.level + ". Я подобрал " + plan.items.length +
+      " упражнений под " + p.freeTime + " минут. " + pick(PHRASES_START);
+
+    var totalMin = Math.round(plan.items.length * 3.2);
+    document.getElementById("plan-stats").innerHTML =
+      stat(plan.items.length, "упражнений") +
+      stat("~" + totalMin, "минут") +
+      stat(plan.bmi.toFixed(1), "твой ИМТ") +
+      stat(cap(plan.level), "уровень");
+
+    var list = document.getElementById("plan-list");
+    list.innerHTML = "";
+    plan.items.forEach(function(it){
+      var li = document.createElement("li");
+      var detail = it.type === "reps"
+        ? (it.sets + " × " + it.reps + " повт.")
+        : (fmtTime(it.seconds));
+      li.innerHTML = '<span class="ex-name">' + it.emoji + " " + it.name + '</span><span class="ex-detail">' + detail + "</span>";
+      list.appendChild(li);
+    });
+  }
+  function stat(v,l){ return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+  document.getElementById("btn-back-to-form").addEventListener("click", function(){ showScreen("form"); });
+
+  // ---------- ЭКРАН 3: тренировка (робот заставляет) ----------
+  var woProgressText = document.getElementById("wo-progress-text");
+  var woTimeLeft = document.getElementById("wo-time-left");
+  var woProgressBar = document.getElementById("wo-progress-bar");
+  var woSpeech = document.getElementById("wo-speech");
+  var woPhase = document.getElementById("wo-phase");
+  var woEmoji = document.getElementById("wo-emoji");
+  var woName = document.getElementById("wo-name");
+  var woTarget = document.getElementById("wo-target");
+  var woTimer = document.getElementById("wo-timer");
+  var btnWoAction = document.getElementById("btn-wo-action");
+
+  // Плоская очередь шагов: для каждого упражнения — раунды по числу сетов, между ними отдых, и отдых между упражнениями
+  var queue = [];
+  var qIndex = 0;
+  var countdownHandle = null;
+  var workoutActive = false;
+  var totalTrainedSeconds = 0;
+
+  function buildQueue(items){
+    var q = [];
+    items.forEach(function(it, idx){
+      for(var s=1; s<=it.sets; s++){
+        q.push({
+          kind: "exercise", ex: it, setNum: s,
+          isLast: idx === items.length-1 && s === it.sets
+        });
+        var isVeryLast = idx === items.length-1 && s === it.sets;
+        if(!isVeryLast){
+          q.push({kind:"rest", restSec: it.restSec});
+        }
+      }
+    });
+    return q;
+  }
+
+  document.getElementById("btn-start-workout").addEventListener("click", function(){
+    queue = buildQueue(plan.items);
+    qIndex = 0;
+    totalTrainedSeconds = 0;
+    workoutActive = true;
+    showScreen("workout");
+    runStep();
+  });
+
+  window.addEventListener("beforeunload", function(e){
+    if(workoutActive){
+      e.preventDefault();
+      e.returnValue = "";
+    }
+  });
+
+  function clearCountdown(){
+    if(countdownHandle){ clearInterval(countdownHandle); countdownHandle = null; }
+  }
+
+  function updateProgressHeader(){
+    var exerciseSteps = queue.filter(function(s){ return s.kind==="exercise"; });
+    var doneExercises = queue.slice(0, qIndex).filter(function(s){ return s.kind==="exercise"; }).length;
+    var currentIsExercise = queue[qIndex] && queue[qIndex].kind === "exercise";
+    var shown = doneExercises + (currentIsExercise ? 1 : 0);
+    woProgressText.textContent = "Шаг " + shown + "/" + exerciseSteps.length;
+    var pct = Math.round((qIndex / queue.length) * 100);
+    woProgressBar.style.width = pct + "%";
+  }
+
+  function runStep(){
+    if(qIndex >= queue.length){
+      finishWorkout();
+      return;
+    }
+    updateProgressHeader();
+    var step = queue[qIndex];
+
+    if(step.kind === "exercise"){
+      renderExerciseStep(step);
+    } else {
+      renderRestStep(step);
+    }
+  }
+
+  function renderExerciseStep(step){
+    var ex = step.ex;
+    woPhase.textContent = "УПРАЖНЕНИЕ · СЕТ " + step.setNum + "/" + ex.sets;
+    woEmoji.textContent = ex.emoji;
+    woName.textContent = ex.name;
+    woSpeech.textContent = pick(PHRASES_MID);
+    woTimeLeft.textContent = "";
+
+    if(ex.type === "reps"){
+      woTarget.textContent = ex.reps + " повторений";
+      woTimer.textContent = "";
+      btnWoAction.disabled = false;
+      btnWoAction.textContent = "Готово ✅";
+      btnWoAction.onclick = function(){
+        totalTrainedSeconds += 30; // приблизительное время на подход
+        qIndex++;
+        runStep();
+      };
+    } else {
+      woTarget.textContent = "Держи темп";
+      btnWoAction.disabled = true;
+      btnWoAction.textContent = "Иди до конца...";
+      var remaining = ex.seconds;
+      woTimer.textContent = fmtTime(remaining);
+      clearCountdown();
+      countdownHandle = setInterval(function(){
+        remaining--;
+        totalTrainedSeconds++;
+        woTimer.textContent = fmtTime(remaining);
+        if(remaining <= 0){
+          clearCountdown();
+          qIndex++;
+          runStep();
+        }
+      }, 1000);
+    }
+  }
+
+  function renderRestStep(step){
+    woPhase.textContent = "ОТДЫХ";
+    woEmoji.textContent = "⏳";
+    woName.textContent = "Передышка";
+    woTarget.textContent = "Приготовься к следующему";
+    woSpeech.textContent = pick(PHRASES_REST);
+    btnWoAction.disabled = true;
+    btnWoAction.textContent = "Робот держит паузу...";
+
+    var remaining = step.restSec;
+    woTimer.textContent = fmtTime(remaining);
+    clearCountdown();
+    countdownHandle = setInterval(function(){
+      remaining--;
+      woTimer.textContent = fmtTime(remaining);
+      if(remaining <= 0){
+        clearCountdown();
+        qIndex++;
+        runStep();
+      }
+    }, 1000);
+  }
+
+  function finishWorkout(){
+    workoutActive = false;
+    clearCountdown();
+    var minutes = Math.max(1, Math.round(totalTrainedSeconds/60));
+    var kcal = Math.round(minutes * (profile.weight/60) * 6);
+
+    document.getElementById("done-speech").textContent = pick(PHRASES_DONE);
+    document.getElementById("done-stats").innerHTML =
+      stat(plan.items.length, "упражнений") +
+      stat(minutes, "минут в деле") +
+      stat("~" + kcal, "ккал") +
+      stat(cap(plan.level), "уровень");
+
+    showScreen("done");
+  }
+
+  document.getElementById("btn-again").addEventListener("click", function(){
+    plan = generatePlan(profile);
+    renderPlan(plan, profile);
+    showScreen("plan");
+  });
+  document.getElementById("btn-restart-form").addEventListener("click", function(){ showScreen("form"); });
+
+})();
+</script>
 </body>
 </html>
