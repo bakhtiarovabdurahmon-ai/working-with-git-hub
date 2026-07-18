@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <title>Робот-Тренер | Домашние тренировки</title>
 <style>
   :root{
@@ -33,6 +37,7 @@
   .header{
     text-align:center;
     margin-bottom:18px;
+    position:relative;
   }
   .header h1{
     font-size:22px;
@@ -46,6 +51,16 @@
   @keyframes float{
     0%,100%{transform:translateY(0);}
     50%{transform:translateY(-6px);}
+  }
+  .install-btn{
+    display:none;
+    margin:10px auto 0;
+    max-width:260px;
+    background:transparent;
+    color:var(--accent);
+    border:1px solid var(--accent);
+    font-size:13px;
+    padding:8px 14px;
   }
   .card{
     background:var(--panel);
@@ -65,7 +80,7 @@
     color:var(--muted);
     margin-bottom:6px;
   }
-  input[type=number]{
+  input[type=number], input[type=time], textarea{
     width:100%;
     padding:12px 14px;
     background:#0d1117;
@@ -73,8 +88,10 @@
     border-radius:10px;
     color:var(--text);
     font-size:16px;
+    font-family:inherit;
   }
-  input[type=number]:focus{
+  textarea{resize:vertical;min-height:70px;line-height:1.4;}
+  input:focus, textarea:focus{
     outline:none;
     border-color:var(--accent);
   }
@@ -106,6 +123,79 @@
     border:1px solid #30363d;
     margin-top:10px;
   }
+  .btn-ghost{
+    background:transparent;
+    color:var(--muted);
+    border:1px dashed #30363d;
+    font-size:13px;
+    padding:10px;
+    margin-top:10px;
+  }
+
+  .toggle-row{
+    display:flex;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  .toggle-btn{
+    flex:1;
+    background:#0d1117;
+    border:1px solid #30363d;
+    color:var(--muted);
+    padding:10px;
+    font-size:14px;
+    font-weight:600;
+  }
+  .toggle-btn.active{
+    border-color:var(--accent);
+    color:var(--accent);
+    background:rgba(0,224,164,.08);
+  }
+
+  .sub-block{
+    border-left:2px solid #21262d;
+    padding-left:12px;
+    margin:10px 0 18px;
+    display:none;
+  }
+  .sub-block.visible{display:block;}
+  .time-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .prayer-list{list-style:none;padding:0;margin:10px 0;}
+  .prayer-list li{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
+    font-size:14px;
+    border-bottom:1px solid #21262d;
+  }
+  .prayer-list li:last-child{border-bottom:none;}
+  .status-text{font-size:13px;color:var(--muted);margin:6px 0;}
+  select{
+    width:100%;
+    padding:10px 12px;
+    background:#0d1117;
+    border:1px solid #30363d;
+    border-radius:10px;
+    color:var(--text);
+    font-size:14px;
+    margin-bottom:8px;
+  }
+
+  .reco-box{
+    background:#0d1117;
+    border:1px solid var(--accent);
+    border-radius:12px;
+    padding:14px;
+    margin:14px 0;
+    font-size:14px;
+    display:none;
+  }
+  .reco-box.visible{display:block;}
+  .reco-box b{color:var(--accent);}
 
   .speech{
     background:#0d1117;
@@ -162,6 +252,15 @@
   .plan-list .ex-name{font-weight:600;}
   .plan-list .ex-detail{color:var(--muted);}
 
+  .start-options{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:4px;
+  }
+  .start-options button{font-size:14px;padding:12px 8px;}
+  .start-options .full{grid-column:1 / -1;}
+
   .progress-bar-outer{
     width:100%;
     height:8px;
@@ -214,7 +313,16 @@
   }
 
   .final-emoji{font-size:64px;text-align:center;display:block;margin-bottom:6px;}
-  a.reset-link{color:var(--muted);font-size:12px;}
+  .wait-emoji{font-size:64px;text-align:center;display:block;margin-bottom:6px;}
+  .wait-timer{
+    font-size:48px;
+    font-weight:800;
+    text-align:center;
+    color:var(--accent2);
+    font-variant-numeric:tabular-nums;
+    margin:14px 0;
+  }
+  .wait-target{text-align:center;color:var(--muted);font-size:13px;margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -222,6 +330,7 @@
   <div class="header">
     <span class="robot-face">🤖</span>
     <h1>Робот-Тренер</h1>
+    <button class="install-btn" id="btn-install">📲 Установить как приложение</button>
   </div>
 
   <!-- ЭКРАН 1: АНКЕТА -->
@@ -247,12 +356,71 @@
       <div class="field">
         <label for="freetime">Свободное время сегодня (мин)</label>
         <input type="number" id="freetime" placeholder="напр. 20" min="5" max="120">
-        <div class="hint">Столько времени я выделю на тренировку.</div>
+        <div class="hint">Запасной вариант — на следующем шаге я попробую найти окно сам по твоему режиму дня.</div>
       </div>
 
       <div class="error" id="form-error"></div>
-      <button class="btn-primary" id="btn-generate">Составить тренировку</button>
+      <button class="btn-primary" id="btn-generate">Далее</button>
     </div>
+  </div>
+
+  <!-- ЭКРАН 1.5: РЕЖИМ ДНЯ -->
+  <div class="screen" id="screen-schedule">
+    <div class="card">
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech">Теперь расскажи про свой день — я поищу свободное окно для тренировки и учту намаз и работу.</div>
+      </div>
+
+      <label>Вы совершаете намаз?</label>
+      <div class="toggle-row" id="toggle-prays">
+        <button type="button" class="toggle-btn" data-value="yes">Да</button>
+        <button type="button" class="toggle-btn" data-value="no">Нет</button>
+      </div>
+      <div class="sub-block" id="block-prays">
+        <label for="mazhab">Мазхаб (для расчёта времени Аср)</label>
+        <select id="mazhab">
+          <option value="1">Ханафи</option>
+          <option value="0">Шафии / Малики / Ханбали</option>
+        </select>
+        <button type="button" class="btn-secondary" id="btn-locate">📍 Определить время намаза по геолокации</button>
+        <div class="status-text" id="prayer-status"></div>
+        <ul class="prayer-list" id="prayer-list" style="display:none;"></ul>
+        <div class="sub-block visible" id="block-prays-manual">
+          <div class="hint">Если геолокация недоступна — впиши время намазов вручную:</div>
+          <div class="time-grid">
+            <div class="field"><label for="p-fajr">Фаджр</label><input type="time" id="p-fajr"></div>
+            <div class="field"><label for="p-dhuhr">Зухр</label><input type="time" id="p-dhuhr"></div>
+            <div class="field"><label for="p-asr">Аср</label><input type="time" id="p-asr"></div>
+            <div class="field"><label for="p-maghrib">Магриб</label><input type="time" id="p-maghrib"></div>
+            <div class="field"><label for="p-isha">Иша</label><input type="time" id="p-isha"></div>
+          </div>
+        </div>
+      </div>
+
+      <label>Вы сегодня работаете?</label>
+      <div class="toggle-row" id="toggle-works">
+        <button type="button" class="toggle-btn" data-value="yes">Да</button>
+        <button type="button" class="toggle-btn" data-value="no">Нет</button>
+      </div>
+      <div class="sub-block" id="block-works">
+        <div class="time-grid">
+          <div class="field"><label for="work-start">Работа с</label><input type="time" id="work-start" value="09:00"></div>
+          <div class="field"><label for="work-end">Работа до</label><input type="time" id="work-end" value="18:00"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="extra-schedule">Что ещё запланировано сегодня? (необязательно)</label>
+        <textarea id="extra-schedule" rows="3" placeholder="напр.&#10;18:30-19:00 Дорога домой&#10;22:30 Сон"></textarea>
+        <div class="hint">Формат строки: ЧЧ:ММ-ЧЧ:ММ дело.</div>
+      </div>
+
+      <button type="button" class="btn-secondary" id="btn-find-window">Найти окно для тренировки</button>
+      <div class="reco-box" id="reco-box"></div>
+    </div>
+    <button class="btn-primary" id="btn-to-plan">Составить тренировку</button>
+    <button class="btn-secondary" id="btn-schedule-back">Назад</button>
   </div>
 
   <!-- ЭКРАН 2: ПЛАН -->
@@ -265,8 +433,34 @@
       <div class="stat-grid" id="plan-stats"></div>
       <ul class="plan-list" id="plan-list"></ul>
     </div>
-    <button class="btn-primary" id="btn-start-workout">Начать тренировку 💪</button>
+
+    <div class="card">
+      <label>Когда начнём?</label>
+      <div class="start-options" id="start-options">
+        <button class="btn-primary full" id="btn-start-now">Сейчас 💪</button>
+        <button class="btn-secondary" id="btn-start-30">Через 30 мин</button>
+        <button class="btn-secondary" id="btn-start-60">Через 1 час</button>
+        <button class="btn-secondary full" id="btn-start-reco" style="display:none;"></button>
+      </div>
+      <div class="hint" id="notif-hint"></div>
+      <button type="button" class="btn-ghost" id="btn-enable-notif">🔔 Включить напоминание с вибрацией</button>
+    </div>
     <button class="btn-secondary" id="btn-back-to-form">Изменить данные</button>
+  </div>
+
+  <!-- ЭКРАН ОЖИДАНИЯ (напоминание) -->
+  <div class="screen" id="screen-wait">
+    <div class="card">
+      <span class="wait-emoji">⏰</span>
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech" id="wait-speech">Я напомню тебе, когда придёт время.</div>
+      </div>
+      <div class="wait-timer" id="wait-timer">00:00</div>
+      <div class="wait-target" id="wait-target"></div>
+    </div>
+    <button class="btn-primary" id="btn-wait-start-now">Я готов, начать сейчас</button>
+    <button class="btn-secondary" id="btn-wait-cancel">Отменить напоминание</button>
   </div>
 
   <!-- ЭКРАН 3: ТРЕНИРОВКА -->
@@ -314,6 +508,7 @@
   "use strict";
 
   var STORAGE_KEY = "robot-trainer-profile";
+  var REMINDER_KEY = "robot-trainer-reminder";
 
   var EXERCISES = [
     {name:"Приседания",       emoji:"🦵", type:"reps", baseReps:15, met:"легко для ног"},
@@ -362,10 +557,18 @@
     var m = Math.floor(sec/60), s = sec%60;
     return (m<10?"0":"")+m+":"+(s<10?"0":"")+s;
   }
+  function fmtHM(totalMinutes){
+    var h = Math.floor(totalMinutes/60) % 24, m = totalMinutes % 60;
+    return (h<10?"0":"")+h+":"+(m<10?"0":"")+m;
+  }
+  function stat(v,l){ return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
+  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
 
   var screens = {
     form: document.getElementById("screen-form"),
+    schedule: document.getElementById("screen-schedule"),
     plan: document.getElementById("screen-plan"),
+    wait: document.getElementById("screen-wait"),
     workout: document.getElementById("screen-workout"),
     done: document.getElementById("screen-done")
   };
@@ -375,6 +578,27 @@
     });
     window.scrollTo(0,0);
   }
+
+  // ---------- PWA: service worker + install prompt ----------
+  var swRegistration = null;
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").then(function(reg){ swRegistration = reg; }).catch(function(){});
+  }
+  var deferredInstallPrompt = null;
+  var btnInstall = document.getElementById("btn-install");
+  window.addEventListener("beforeinstallprompt", function(e){
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    btnInstall.style.display = "block";
+  });
+  btnInstall.addEventListener("click", function(){
+    if(!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.finished = deferredInstallPrompt.userChoice.then(function(){
+      deferredInstallPrompt = null;
+      btnInstall.style.display = "none";
+    });
+  });
 
   // ---------- ЭКРАН 1: форма ----------
   var elWeight = document.getElementById("weight");
@@ -397,6 +621,11 @@
 
   var profile = null;
   var plan = null;
+  var scheduleState = {
+    prays: null, mazhab: "1", prayerTimes: null,
+    works: null, workStart: "09:00", workEnd: "18:00",
+    extraText: "", recommendation: null
+  };
 
   document.getElementById("btn-generate").addEventListener("click", function(){
     var weight = parseFloat(elWeight.value);
@@ -413,8 +642,226 @@
     profile = {weight:weight, height:height, age:age, freeTime:freeTime};
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 
+    showScreen("schedule");
+  });
+
+  // ---------- ЭКРАН 1.5: режим дня ----------
+  function wireToggle(groupId, onChange){
+    var group = document.getElementById(groupId);
+    var buttons = group.querySelectorAll(".toggle-btn");
+    buttons.forEach(function(btn){
+      btn.addEventListener("click", function(){
+        buttons.forEach(function(b){ b.classList.remove("active"); });
+        btn.classList.add("active");
+        onChange(btn.getAttribute("data-value"));
+      });
+    });
+  }
+
+  var blockPrays = document.getElementById("block-prays");
+  wireToggle("toggle-prays", function(value){
+    scheduleState.prays = value === "yes";
+    blockPrays.classList.toggle("visible", scheduleState.prays);
+  });
+
+  var blockWorks = document.getElementById("block-works");
+  wireToggle("toggle-works", function(value){
+    scheduleState.works = value === "yes";
+    blockWorks.classList.toggle("visible", scheduleState.works);
+  });
+
+  document.getElementById("mazhab").addEventListener("change", function(e){
+    scheduleState.mazhab = e.target.value;
+    if(scheduleState.prayerTimes){ locatePrayerTimes(); }
+  });
+
+  var prayerStatus = document.getElementById("prayer-status");
+  var prayerListEl = document.getElementById("prayer-list");
+  var prayerManualBlock = document.getElementById("block-prays-manual");
+
+  function locatePrayerTimes(){
+    if(!("geolocation" in navigator)){
+      prayerStatus.textContent = "Геолокация не поддерживается — впиши время намазов вручную ниже.";
+      return;
+    }
+    prayerStatus.textContent = "Определяю местоположение...";
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var lat = pos.coords.latitude, lng = pos.coords.longitude;
+      prayerStatus.textContent = "Загружаю время намаза...";
+      fetchPrayerTimes(lat, lng, scheduleState.mazhab)
+        .then(function(times){
+          scheduleState.prayerTimes = times;
+          prayerStatus.textContent = "Готово (по данным Aladhan API).";
+          renderPrayerList(times);
+          prayerManualBlock.classList.remove("visible");
+        })
+        .catch(function(){
+          prayerStatus.textContent = "Не удалось получить время намаза. Впиши вручную ниже.";
+        });
+    }, function(){
+      prayerStatus.textContent = "Доступ к геолокации не разрешён. Впиши время намаза вручную ниже.";
+    }, {timeout:8000});
+  }
+
+  function fetchPrayerTimes(lat, lng, school){
+    var d = new Date();
+    var dateStr = (d.getDate()<10?"0":"")+d.getDate()+"-"+((d.getMonth()+1)<10?"0":"")+(d.getMonth()+1)+"-"+d.getFullYear();
+    var url = "https://api.aladhan.com/v1/timings/"+dateStr+"?latitude="+lat+"&longitude="+lng+"&method=14&school="+school;
+    return fetch(url).then(function(r){
+      if(!r.ok) throw new Error("bad response");
+      return r.json();
+    }).then(function(data){
+      var t = data.data.timings;
+      function clean(v){ return v.split(" ")[0]; }
+      return {
+        Fajr: clean(t.Fajr), Dhuhr: clean(t.Dhuhr), Asr: clean(t.Asr),
+        Maghrib: clean(t.Maghrib), Isha: clean(t.Isha)
+      };
+    });
+  }
+
+  function renderPrayerList(times){
+    var labels = {Fajr:"Фаджр", Dhuhr:"Зухр", Asr:"Аср", Maghrib:"Магриб", Isha:"Иша"};
+    var html = "";
+    Object.keys(labels).forEach(function(k){
+      html += "<li><span>"+labels[k]+"</span><span>"+times[k]+"</span></li>";
+    });
+    prayerListEl.innerHTML = html;
+    prayerListEl.style.display = "block";
+  }
+
+  document.getElementById("btn-locate").addEventListener("click", locatePrayerTimes);
+
+  // ---------- Разбор расписания и поиск свободного окна ----------
+  function parseHM(str){
+    if(!str) return null;
+    var m = /^(\d{1,2}):(\d{2})/.exec(str.trim());
+    if(!m) return null;
+    return parseInt(m[1],10)*60 + parseInt(m[2],10);
+  }
+
+  function parseExtraSchedule(text){
+    var busy = [];
+    text.split("\n").forEach(function(line){
+      var m = /^\s*(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(.*)$/.exec(line);
+      if(m){
+        var start = parseInt(m[1],10)*60 + parseInt(m[2],10);
+        var end = parseInt(m[3],10)*60 + parseInt(m[4],10);
+        if(end > start){
+          busy.push({start:start, end:end, label: m[5] || "Занят"});
+        }
+      }
+    });
+    return busy;
+  }
+
+  function collectBusyIntervals(){
+    var busy = [];
+
+    if(scheduleState.prays){
+      var times = scheduleState.prayerTimes;
+      if(!times){
+        times = {
+          Fajr: document.getElementById("p-fajr").value,
+          Dhuhr: document.getElementById("p-dhuhr").value,
+          Asr: document.getElementById("p-asr").value,
+          Maghrib: document.getElementById("p-maghrib").value,
+          Isha: document.getElementById("p-isha").value
+        };
+      }
+      var labels = {Fajr:"Фаджр", Dhuhr:"Зухр", Asr:"Аср", Maghrib:"Магриб", Isha:"Иша"};
+      Object.keys(labels).forEach(function(k){
+        var mins = parseHM(times[k]);
+        if(mins !== null){
+          busy.push({start: Math.max(0, mins-5), end: mins+15, label: labels[k]});
+        }
+      });
+    }
+
+    if(scheduleState.works){
+      var ws = parseHM(document.getElementById("work-start").value);
+      var we = parseHM(document.getElementById("work-end").value);
+      if(ws !== null && we !== null && we > ws){
+        busy.push({start: ws, end: we, label: "Работа"});
+      }
+    }
+
+    var extraText = document.getElementById("extra-schedule").value;
+    busy = busy.concat(parseExtraSchedule(extraText));
+
+    busy.sort(function(a,b){ return a.start - b.start; });
+
+    var merged = [];
+    busy.forEach(function(b){
+      var last = merged[merged.length-1];
+      if(last && b.start <= last.end){
+        last.end = Math.max(last.end, b.end);
+        last.label = last.label + " / " + b.label;
+      } else {
+        merged.push({start:b.start, end:b.end, label:b.label});
+      }
+    });
+    return merged;
+  }
+
+  function findFreeWindow(){
+    var now = new Date();
+    var nowMinutes = now.getHours()*60 + now.getMinutes();
+    var dayEnd = 23*60 + 30;
+    var busy = collectBusyIntervals();
+
+    var gaps = [];
+    var cursor = nowMinutes;
+    busy.forEach(function(b){
+      if(b.start > cursor){
+        gaps.push({start:cursor, end: Math.min(b.start, dayEnd)});
+      }
+      cursor = Math.max(cursor, b.end);
+    });
+    if(cursor < dayEnd){
+      gaps.push({start:cursor, end:dayEnd});
+    }
+    gaps = gaps.filter(function(g){ return (g.end - g.start) >= 10; });
+
+    var best = null;
+    gaps.forEach(function(g){
+      if(!best || (g.end-g.start) > (best.end-best.start)) best = g;
+    });
+
+    return {busy:busy, gaps:gaps, best:best};
+  }
+
+  var recoBox = document.getElementById("reco-box");
+
+  document.getElementById("btn-find-window").addEventListener("click", function(){
+    var result = findFreeWindow();
+    if(!result.best){
+      recoBox.classList.add("visible");
+      recoBox.innerHTML = "Свободных окон сегодня не нашлось. Я всё равно составлю тренировку на " +
+        (profile.freeTime) + " мин из твоей анкеты.";
+      scheduleState.recommendation = null;
+      return;
+    }
+    var duration = Math.min(90, result.best.end - result.best.start);
+    scheduleState.recommendation = {start: result.best.start, end: result.best.start + duration, duration: duration};
+
+    var busyHtml = result.busy.length
+      ? "<br>Занято: " + result.busy.map(function(b){ return fmtHM(b.start)+"–"+fmtHM(b.end)+" ("+b.label+")"; }).join(", ")
+      : "";
+    recoBox.classList.add("visible");
+    recoBox.innerHTML = "Рекомендую тренироваться <b>" + fmtHM(result.best.start) + "–" + fmtHM(result.best.start+duration) +
+      "</b> (свободно " + duration + " мин)." + busyHtml;
+  });
+
+  document.getElementById("btn-schedule-back").addEventListener("click", function(){ showScreen("form"); });
+
+  document.getElementById("btn-to-plan").addEventListener("click", function(){
+    if(scheduleState.recommendation){
+      profile.freeTime = Math.max(5, Math.min(120, scheduleState.recommendation.duration));
+    }
     plan = generatePlan(profile);
     renderPlan(plan, profile);
+    renderStartOptions();
     showScreen("plan");
   });
 
@@ -482,10 +929,138 @@
       list.appendChild(li);
     });
   }
-  function stat(v,l){ return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>'; }
-  function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
 
   document.getElementById("btn-back-to-form").addEventListener("click", function(){ showScreen("form"); });
+
+  // ---------- Напоминания: вибрация + уведомления ----------
+  var notifHint = document.getElementById("notif-hint");
+  function updateNotifHint(){
+    if(!("Notification" in window)){
+      notifHint.textContent = "Уведомления не поддерживаются этим браузером, но вибрация при открытом приложении будет работать.";
+    } else if(Notification.permission === "granted"){
+      notifHint.textContent = "Напоминания и вибрация включены.";
+    } else if(Notification.permission === "denied"){
+      notifHint.textContent = "Уведомления заблокированы в настройках браузера.";
+    } else {
+      notifHint.textContent = "Нажми, чтобы робот мог напомнить вибрацией и уведомлением.";
+    }
+  }
+  updateNotifHint();
+
+  document.getElementById("btn-enable-notif").addEventListener("click", function(){
+    if(!("Notification" in window)){ updateNotifHint(); return; }
+    Notification.requestPermission().then(function(){ updateNotifHint(); });
+    if(navigator.vibrate) navigator.vibrate(80);
+  });
+
+  function renderStartOptions(){
+    var btnReco = document.getElementById("btn-start-reco");
+    if(scheduleState.recommendation){
+      btnReco.style.display = "block";
+      btnReco.textContent = "В " + fmtHM(scheduleState.recommendation.start) + " (по режиму дня)";
+    } else {
+      btnReco.style.display = "none";
+    }
+  }
+
+  document.getElementById("btn-start-now").addEventListener("click", function(){
+    clearReminder();
+    startWorkoutNow();
+  });
+  document.getElementById("btn-start-30").addEventListener("click", function(){
+    scheduleReminder(Date.now() + 30*60000);
+  });
+  document.getElementById("btn-start-60").addEventListener("click", function(){
+    scheduleReminder(Date.now() + 60*60000);
+  });
+  document.getElementById("btn-start-reco").addEventListener("click", function(){
+    if(!scheduleState.recommendation) return;
+    var now = new Date();
+    var target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, scheduleState.recommendation.start);
+    scheduleReminder(target.getTime());
+  });
+
+  var reminderTimeout = null;
+  var reminderTickHandle = null;
+
+  function scheduleReminder(targetMs){
+    localStorage.setItem(REMINDER_KEY, JSON.stringify({target: targetMs}));
+    armReminder(targetMs);
+  }
+
+  function armReminder(targetMs){
+    clearTimersOnly();
+    var target = document.getElementById("wait-target");
+    target.textContent = "Робот напомнит в " + new Date(targetMs).toLocaleTimeString("ru-RU", {hour:"2-digit", minute:"2-digit"});
+    showScreen("wait");
+
+    function tick(){
+      var remaining = Math.max(0, targetMs - Date.now());
+      document.getElementById("wait-timer").textContent = fmtTime(Math.ceil(remaining/1000));
+      if(remaining <= 0){
+        clearTimersOnly();
+        fireReminder();
+      }
+    }
+    tick();
+    reminderTickHandle = setInterval(tick, 1000);
+  }
+
+  function clearTimersOnly(){
+    if(reminderTimeout){ clearTimeout(reminderTimeout); reminderTimeout = null; }
+    if(reminderTickHandle){ clearInterval(reminderTickHandle); reminderTickHandle = null; }
+  }
+
+  function clearReminder(){
+    clearTimersOnly();
+    localStorage.removeItem(REMINDER_KEY);
+  }
+
+  function fireReminder(){
+    localStorage.removeItem(REMINDER_KEY);
+    if(navigator.vibrate) navigator.vibrate([500,200,500,200,500]);
+    try{
+      if(swRegistration && swRegistration.showNotification){
+        swRegistration.showNotification("Робот-Тренер", {
+          body: "Пора тренироваться! Робот ждёт тебя.",
+          icon: "icons/icon-192.png",
+          badge: "icons/icon-192.png",
+          vibrate: [500,200,500,200,500],
+          tag: "robot-trainer-reminder",
+          requireInteraction: true
+        });
+      } else if("Notification" in window && Notification.permission === "granted"){
+        new Notification("Робот-Тренер", {body: "Пора тренироваться! Робот ждёт тебя.", icon: "icons/icon-192.png"});
+      }
+    }catch(e){}
+
+    document.getElementById("wait-speech").textContent = "Время пришло! Хватит откладывать — робот ждёт тебя на тренировке.";
+    document.getElementById("wait-timer").textContent = "00:00";
+    showScreen("wait");
+  }
+
+  document.getElementById("btn-wait-start-now").addEventListener("click", function(){
+    clearReminder();
+    startWorkoutNow();
+  });
+  document.getElementById("btn-wait-cancel").addEventListener("click", function(){
+    clearReminder();
+    showScreen("plan");
+  });
+
+  // При открытии приложения — проверяем, не осталось ли активное напоминание
+  (function resumePendingReminder(){
+    try{
+      var saved = JSON.parse(localStorage.getItem(REMINDER_KEY) || "null");
+      if(saved && saved.target){
+        if(saved.target <= Date.now()){
+          fireReminder();
+        } else {
+          armReminder(saved.target);
+        }
+      }
+    }catch(e){}
+  })();
 
   // ---------- ЭКРАН 3: тренировка (робот заставляет) ----------
   var woProgressText = document.getElementById("wo-progress-text");
@@ -510,11 +1085,8 @@
     var q = [];
     items.forEach(function(it, idx){
       for(var s=1; s<=it.sets; s++){
-        q.push({
-          kind: "exercise", ex: it, setNum: s,
-          isLast: idx === items.length-1 && s === it.sets
-        });
         var isVeryLast = idx === items.length-1 && s === it.sets;
+        q.push({kind: "exercise", ex: it, setNum: s});
         if(!isVeryLast){
           q.push({kind:"rest", restSec: it.restSec});
         }
@@ -523,14 +1095,14 @@
     return q;
   }
 
-  document.getElementById("btn-start-workout").addEventListener("click", function(){
+  function startWorkoutNow(){
     queue = buildQueue(plan.items);
     qIndex = 0;
     totalTrainedSeconds = 0;
     workoutActive = true;
     showScreen("workout");
     runStep();
-  });
+  }
 
   window.addEventListener("beforeunload", function(e){
     if(workoutActive){
@@ -648,6 +1220,7 @@
   document.getElementById("btn-again").addEventListener("click", function(){
     plan = generatePlan(profile);
     renderPlan(plan, profile);
+    renderStartOptions();
     showScreen("plan");
   });
   document.getElementById("btn-restart-form").addEventListener("click", function(){ showScreen("form"); });
