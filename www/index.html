@@ -158,44 +158,76 @@
     margin:10px 0 18px;
     display:none;
   }
-  .sub-block.visible{display:block;}
-  .time-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  .prayer-list{list-style:none;padding:0;margin:10px 0;}
-  .prayer-list li{
+  .chat-card{display:flex; flex-direction:column;}
+  .chat-log{
+    max-height:400px;
+    overflow-y:auto;
     display:flex;
-    justify-content:space-between;
-    padding:6px 0;
-    font-size:14px;
-    border-bottom:1px solid #21262d;
+    flex-direction:column;
+    gap:10px;
+    padding-right:2px;
+    margin-bottom:12px;
   }
-  .prayer-list li:last-child{border-bottom:none;}
-  .status-text{font-size:13px;color:var(--muted);margin:6px 0;}
-  select{
-    width:100%;
-    padding:10px 12px;
-    background:#0d1117;
-    border:1px solid #30363d;
-    border-radius:10px;
-    color:var(--text);
+  .chat-msg{
+    max-width:84%;
+    padding:10px 14px;
+    border-radius:14px;
     font-size:14px;
+    line-height:1.45;
+    white-space:pre-line;
+  }
+  .chat-msg.bot{
+    align-self:flex-start;
+    background:#0d1117;
+    border:1px solid #21262d;
+    border-bottom-left-radius:4px;
+  }
+  .chat-msg.user{
+    align-self:flex-end;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#04120d;
+    border-bottom-right-radius:4px;
+    font-weight:600;
+  }
+  .chat-quick-replies{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
     margin-bottom:8px;
   }
-
-  .reco-box{
-    background:#0d1117;
+  .chat-quick-replies button{
+    width:auto;
+    flex:none;
+    padding:9px 16px;
+    font-size:13px;
+    font-weight:600;
+    background:transparent;
     border:1px solid var(--accent);
-    border-radius:12px;
-    padding:14px;
-    margin:14px 0;
-    font-size:14px;
-    display:none;
+    color:var(--accent);
+    border-radius:20px;
   }
-  .reco-box.visible{display:block;}
-  .reco-box b{color:var(--accent);}
+  .chat-input-row{
+    display:flex;
+    gap:8px;
+  }
+  .chat-input-row input{flex:1;}
+  .chat-input-row button{
+    width:auto;
+    padding:12px 18px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#04120d;
+  }
+
+  .diet-groups .diet-group{margin-bottom:10px;}
+  .diet-groups .diet-group:last-child{margin-bottom:0;}
+  .diet-groups .diet-title{
+    color:var(--accent);
+    font-size:12px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+  }
+  .diet-groups .diet-items{font-size:14px;margin-top:2px;}
 
   .speech{
     background:#0d1117;
@@ -366,60 +398,14 @@
 
   <!-- ЭКРАН 1.5: РЕЖИМ ДНЯ -->
   <div class="screen" id="screen-schedule">
-    <div class="card">
-      <div class="robot-row">
-        <span class="robot-face">🤖</span>
-        <div class="speech">Теперь расскажи про свой день — я поищу свободное окно для тренировки и учту намаз и работу.</div>
+    <div class="card chat-card">
+      <div class="chat-log" id="chat-log"></div>
+      <div class="chat-quick-replies" id="chat-quick-replies"></div>
+      <div class="chat-input-row" id="chat-input-row" style="display:none;">
+        <input type="text" id="chat-input" placeholder="Напиши ответ...">
+        <button type="button" id="chat-send">➤</button>
       </div>
-
-      <label>Вы совершаете намаз?</label>
-      <div class="toggle-row" id="toggle-prays">
-        <button type="button" class="toggle-btn" data-value="yes">Да</button>
-        <button type="button" class="toggle-btn" data-value="no">Нет</button>
-      </div>
-      <div class="sub-block" id="block-prays">
-        <label for="mazhab">Мазхаб (для расчёта времени Аср)</label>
-        <select id="mazhab">
-          <option value="1">Ханафи</option>
-          <option value="0">Шафии / Малики / Ханбали</option>
-        </select>
-        <button type="button" class="btn-secondary" id="btn-locate">📍 Определить время намаза по геолокации</button>
-        <div class="status-text" id="prayer-status"></div>
-        <ul class="prayer-list" id="prayer-list" style="display:none;"></ul>
-        <div class="sub-block visible" id="block-prays-manual">
-          <div class="hint">Если геолокация недоступна — впиши время намазов вручную:</div>
-          <div class="time-grid">
-            <div class="field"><label for="p-fajr">Фаджр</label><input type="time" id="p-fajr"></div>
-            <div class="field"><label for="p-dhuhr">Зухр</label><input type="time" id="p-dhuhr"></div>
-            <div class="field"><label for="p-asr">Аср</label><input type="time" id="p-asr"></div>
-            <div class="field"><label for="p-maghrib">Магриб</label><input type="time" id="p-maghrib"></div>
-            <div class="field"><label for="p-isha">Иша</label><input type="time" id="p-isha"></div>
-          </div>
-        </div>
-      </div>
-
-      <label>Вы сегодня работаете?</label>
-      <div class="toggle-row" id="toggle-works">
-        <button type="button" class="toggle-btn" data-value="yes">Да</button>
-        <button type="button" class="toggle-btn" data-value="no">Нет</button>
-      </div>
-      <div class="sub-block" id="block-works">
-        <div class="time-grid">
-          <div class="field"><label for="work-start">Работа с</label><input type="time" id="work-start" value="09:00"></div>
-          <div class="field"><label for="work-end">Работа до</label><input type="time" id="work-end" value="18:00"></div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="extra-schedule">Что ещё запланировано сегодня? (необязательно)</label>
-        <textarea id="extra-schedule" rows="3" placeholder="напр.&#10;18:30-19:00 Дорога домой&#10;22:30 Сон"></textarea>
-        <div class="hint">Формат строки: ЧЧ:ММ-ЧЧ:ММ дело.</div>
-      </div>
-
-      <button type="button" class="btn-secondary" id="btn-find-window">Найти окно для тренировки</button>
-      <div class="reco-box" id="reco-box"></div>
     </div>
-    <button class="btn-primary" id="btn-to-plan">Составить тренировку</button>
     <button class="btn-secondary" id="btn-schedule-back">Назад</button>
   </div>
 
@@ -432,6 +418,14 @@
       </div>
       <div class="stat-grid" id="plan-stats"></div>
       <ul class="plan-list" id="plan-list"></ul>
+    </div>
+
+    <div class="card" id="diet-card" style="display:none;">
+      <div class="robot-row">
+        <span class="robot-face">🤖</span>
+        <div class="speech" id="diet-speech"></div>
+      </div>
+      <div class="diet-groups" id="diet-groups"></div>
     </div>
 
     <div class="card">
@@ -621,11 +615,16 @@
 
   var profile = null;
   var plan = null;
-  var scheduleState = {
-    prays: null, mazhab: "1", prayerTimes: null,
-    works: null, workStart: "09:00", workEnd: "18:00",
-    extraText: "", recommendation: null
-  };
+  var scheduleState = null;
+
+  function freshScheduleState(){
+    return {
+      prays: null, mazhab: "1", prayerTimes: null,
+      works: null, workStart: null, workEnd: null,
+      extraBusy: [], recommendation: null,
+      dietGoal: null, wantsDiet: null, dietSuggestion: null
+    };
+  }
 
   document.getElementById("btn-generate").addEventListener("click", function(){
     var weight = parseFloat(elWeight.value);
@@ -643,66 +642,139 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
 
     showScreen("schedule");
+    startChat();
   });
 
-  // ---------- ЭКРАН 1.5: режим дня ----------
-  function wireToggle(groupId, onChange){
-    var group = document.getElementById(groupId);
-    var buttons = group.querySelectorAll(".toggle-btn");
-    buttons.forEach(function(btn){
+  // ---------- ЭКРАН 1.5: режим дня как беседа с роботом ----------
+  var chatLogEl = document.getElementById("chat-log");
+  var chatQuickReplies = document.getElementById("chat-quick-replies");
+  var chatInputRow = document.getElementById("chat-input-row");
+  var chatInputEl = document.getElementById("chat-input");
+  var chatSendBtn = document.getElementById("chat-send");
+  var pendingTextHandler = null;
+
+  function botSay(text){
+    var div = document.createElement("div");
+    div.className = "chat-msg bot";
+    div.textContent = text;
+    chatLogEl.appendChild(div);
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+  function userSay(text){
+    var div = document.createElement("div");
+    div.className = "chat-msg user";
+    div.textContent = text;
+    chatLogEl.appendChild(div);
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+  function showQuickReplies(options){
+    chatInputRow.style.display = "none";
+    pendingTextHandler = null;
+    chatQuickReplies.innerHTML = "";
+    options.forEach(function(opt){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = opt.label;
       btn.addEventListener("click", function(){
-        buttons.forEach(function(b){ b.classList.remove("active"); });
-        btn.classList.add("active");
-        onChange(btn.getAttribute("data-value"));
+        chatQuickReplies.innerHTML = "";
+        userSay(opt.label);
+        opt.action();
       });
+      chatQuickReplies.appendChild(btn);
     });
   }
-
-  var blockPrays = document.getElementById("block-prays");
-  wireToggle("toggle-prays", function(value){
-    scheduleState.prays = value === "yes";
-    blockPrays.classList.toggle("visible", scheduleState.prays);
+  function setTextMode(handler){
+    chatQuickReplies.innerHTML = "";
+    chatInputRow.style.display = "flex";
+    pendingTextHandler = handler;
+    chatInputEl.value = "";
+    chatInputEl.focus();
+  }
+  function submitChatText(){
+    var text = chatInputEl.value.trim();
+    if(!text || !pendingTextHandler) return;
+    userSay(text);
+    chatInputEl.value = "";
+    var handler = pendingTextHandler;
+    handler(text);
+  }
+  chatSendBtn.addEventListener("click", submitChatText);
+  chatInputEl.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){ e.preventDefault(); submitChatText(); }
   });
 
-  var blockWorks = document.getElementById("block-works");
-  wireToggle("toggle-works", function(value){
-    scheduleState.works = value === "yes";
-    blockWorks.classList.toggle("visible", scheduleState.works);
-  });
-
-  document.getElementById("mazhab").addEventListener("change", function(e){
-    scheduleState.mazhab = e.target.value;
-    if(scheduleState.prayerTimes){ locatePrayerTimes(); }
-  });
-
-  var prayerStatus = document.getElementById("prayer-status");
-  var prayerListEl = document.getElementById("prayer-list");
-  var prayerManualBlock = document.getElementById("block-prays-manual");
-
-  function locatePrayerTimes(){
-    if(!("geolocation" in navigator)){
-      prayerStatus.textContent = "Геолокация не поддерживается — впиши время намазов вручную ниже.";
-      return;
-    }
-    prayerStatus.textContent = "Определяю местоположение...";
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var lat = pos.coords.latitude, lng = pos.coords.longitude;
-      prayerStatus.textContent = "Загружаю время намаза...";
-      fetchPrayerTimes(lat, lng, scheduleState.mazhab)
-        .then(function(times){
-          scheduleState.prayerTimes = times;
-          prayerStatus.textContent = "Готово (по данным Aladhan API).";
-          renderPrayerList(times);
-          prayerManualBlock.classList.remove("visible");
-        })
-        .catch(function(){
-          prayerStatus.textContent = "Не удалось получить время намаза. Впиши вручную ниже.";
-        });
-    }, function(){
-      prayerStatus.textContent = "Доступ к геолокации не разрешён. Впиши время намаза вручную ниже.";
-    }, {timeout:8000});
+  function startChat(){
+    chatLogEl.innerHTML = "";
+    scheduleState = freshScheduleState();
+    chatInputRow.style.display = "none";
+    chatQuickReplies.innerHTML = "";
+    botSay("Теперь расскажи про свой день — я поищу окно для тренировки, учту намаз и работу, а в конце подскажу с питанием.");
+    setTimeout(askWork, 300);
   }
 
+  function askWork(){
+    botSay("Ты сегодня работаешь?");
+    showQuickReplies([
+      {label:"Да", action:function(){ scheduleState.works = true; askWorkHours(); }},
+      {label:"Нет", action:function(){ scheduleState.works = false; askPrays(); }}
+    ]);
+  }
+  function askWorkHours(){
+    botSay("Во сколько работа? Например: 9:00-18:00");
+    setTextMode(handleWorkHours);
+  }
+  function handleWorkHours(text){
+    var range = parseTimeRange(text);
+    if(!range){
+      botSay("Не понял формат. Напиши, например: 9:00-18:00");
+      setTextMode(handleWorkHours);
+      return;
+    }
+    scheduleState.workStart = fmtHM(range.start);
+    scheduleState.workEnd = fmtHM(range.end);
+    askPrays();
+  }
+
+  function askPrays(){
+    botSay("Ты совершаешь намаз?");
+    showQuickReplies([
+      {label:"Да", action:function(){ scheduleState.prays = true; askPrayerMethod(); }},
+      {label:"Нет", action:function(){ scheduleState.prays = false; askExtra(); }}
+    ]);
+  }
+  function askPrayerMethod(){
+    botSay("Определить время намаза автоматически по геолокации или впишешь вручную?");
+    showQuickReplies([
+      {label:"📍 По геолокации", action: requestGeoPrayerTimes},
+      {label:"✍️ Вручную", action: askPrayerManual}
+    ]);
+  }
+  function requestGeoPrayerTimes(){
+    if(!("geolocation" in navigator)){
+      botSay("Геолокация не поддерживается этим браузером.");
+      askPrayerManual();
+      return;
+    }
+    botSay("Определяю местоположение… (разреши доступ к геолокации, если браузер спросит)");
+    navigator.geolocation.getCurrentPosition(function(pos){
+      botSay("Загружаю время намаза...");
+      fetchPrayerTimes(pos.coords.latitude, pos.coords.longitude, scheduleState.mazhab)
+        .then(function(times){
+          scheduleState.prayerTimes = times;
+          var labels = {Fajr:"Фаджр", Dhuhr:"Зухр", Asr:"Аср", Maghrib:"Магриб", Isha:"Иша"};
+          var lines = Object.keys(labels).map(function(k){ return labels[k] + ": " + times[k]; }).join("\n");
+          botSay("Готово, время намаза сегодня:\n" + lines);
+          askExtra();
+        })
+        .catch(function(){
+          botSay("Не удалось загрузить время намаза. Впиши вручную.");
+          askPrayerManual();
+        });
+    }, function(){
+      botSay("Доступ к геолокации не разрешён. Впиши время намаза вручную.");
+      askPrayerManual();
+    }, {timeout:8000});
+  }
   function fetchPrayerTimes(lat, lng, school){
     var d = new Date();
     var dateStr = (d.getDate()<10?"0":"")+d.getDate()+"-"+((d.getMonth()+1)<10?"0":"")+(d.getMonth()+1)+"-"+d.getFullYear();
@@ -719,36 +791,84 @@
       };
     });
   }
-
-  function renderPrayerList(times){
-    var labels = {Fajr:"Фаджр", Dhuhr:"Зухр", Asr:"Аср", Maghrib:"Магриб", Isha:"Иша"};
-    var html = "";
-    Object.keys(labels).forEach(function(k){
-      html += "<li><span>"+labels[k]+"</span><span>"+times[k]+"</span></li>";
-    });
-    prayerListEl.innerHTML = html;
-    prayerListEl.style.display = "block";
+  function askPrayerManual(){
+    botSay("Впиши 5 времён намаза через запятую в формате ЧЧ:ММ — Фаджр, Зухр, Аср, Магриб, Иша.\nНапример: 04:30, 13:15, 17:00, 20:45, 22:15");
+    setTextMode(handlePrayerManual);
+  }
+  function handlePrayerManual(text){
+    var parts = text.split(/[,;]+/).map(function(s){ return s.trim(); }).filter(Boolean);
+    if(parts.length !== 5){
+      botSay("Нужно ровно 5 значений через запятую. Например: 04:30, 13:15, 17:00, 20:45, 22:15");
+      setTextMode(handlePrayerManual);
+      return;
+    }
+    var mins = parts.map(parseLenientTime);
+    if(mins.some(function(m){ return m === null; })){
+      botSay("Не смог разобрать одно из времён. Формат ЧЧ:ММ, например 04:30.");
+      setTextMode(handlePrayerManual);
+      return;
+    }
+    scheduleState.prayerTimes = {
+      Fajr: fmtHM(mins[0]), Dhuhr: fmtHM(mins[1]), Asr: fmtHM(mins[2]), Maghrib: fmtHM(mins[3]), Isha: fmtHM(mins[4])
+    };
+    botSay("Записал время намаза.");
+    askExtra();
   }
 
-  document.getElementById("btn-locate").addEventListener("click", locatePrayerTimes);
+  function askExtra(){
+    botSay("Что ещё запланировано сегодня? Например: 18:30-19:00 дорога домой. Если ничего — напиши «нет».");
+    setTextMode(handleExtra);
+  }
+  function handleExtra(text){
+    var norm = text.trim().toLowerCase();
+    var noneWords = ["нет","нету","ничего","неа","no","нема","не","-"];
+    if(noneWords.indexOf(norm) !== -1){
+      scheduleState.extraBusy = [];
+    } else {
+      var busy = parseExtraChat(text);
+      scheduleState.extraBusy = busy;
+      if(busy.length === 0){
+        botSay("Не нашёл в этом диапазонов времени, пропускаю этот пункт.");
+      }
+    }
+    showRecommendation();
+  }
 
-  // ---------- Разбор расписания и поиск свободного окна ----------
+  // ---------- Разбор времени и поиск свободного окна ----------
   function parseHM(str){
     if(!str) return null;
     var m = /^(\d{1,2}):(\d{2})/.exec(str.trim());
     if(!m) return null;
     return parseInt(m[1],10)*60 + parseInt(m[2],10);
   }
-
-  function parseExtraSchedule(text){
+  function parseLenientTime(str){
+    if(!str) return null;
+    var m = /^(\d{1,2}):?(\d{2})?$/.exec(str.trim());
+    if(!m) return null;
+    var h = parseInt(m[1],10), mm = m[2] ? parseInt(m[2],10) : 0;
+    if(h>23 || mm>59) return null;
+    return h*60+mm;
+  }
+  function parseTimeRange(text){
+    var m = /(\d{1,2}):?(\d{2})?\s*[-–—]\s*(\d{1,2}):?(\d{2})?/.exec(text);
+    if(!m) return null;
+    var h1=parseInt(m[1],10), m1=m[2]?parseInt(m[2],10):0;
+    var h2=parseInt(m[3],10), m2=m[4]?parseInt(m[4],10):0;
+    if(h1>23||h2>23||m1>59||m2>59) return null;
+    var start=h1*60+m1, end=h2*60+m2;
+    if(end<=start) return null;
+    return {start:start, end:end};
+  }
+  function parseExtraChat(text){
     var busy = [];
-    text.split("\n").forEach(function(line){
-      var m = /^\s*(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\s*(.*)$/.exec(line);
+    text.split(/[;\n]+/).forEach(function(segment){
+      var m = /(\d{1,2}):?(\d{2})?\s*[-–—]\s*(\d{1,2}):?(\d{2})?\s*(.*)$/.exec(segment.trim());
       if(m){
-        var start = parseInt(m[1],10)*60 + parseInt(m[2],10);
-        var end = parseInt(m[3],10)*60 + parseInt(m[4],10);
-        if(end > start){
-          busy.push({start:start, end:end, label: m[5] || "Занят"});
+        var h1=parseInt(m[1],10), mi1=m[2]?parseInt(m[2],10):0;
+        var h2=parseInt(m[3],10), mi2=m[4]?parseInt(m[4],10):0;
+        var start=h1*60+mi1, end=h2*60+mi2;
+        if(end>start){
+          busy.push({start:start, end:end, label:(m[5]||"").trim() || "Занят"});
         }
       }
     });
@@ -758,17 +878,8 @@
   function collectBusyIntervals(){
     var busy = [];
 
-    if(scheduleState.prays){
+    if(scheduleState.prays && scheduleState.prayerTimes){
       var times = scheduleState.prayerTimes;
-      if(!times){
-        times = {
-          Fajr: document.getElementById("p-fajr").value,
-          Dhuhr: document.getElementById("p-dhuhr").value,
-          Asr: document.getElementById("p-asr").value,
-          Maghrib: document.getElementById("p-maghrib").value,
-          Isha: document.getElementById("p-isha").value
-        };
-      }
       var labels = {Fajr:"Фаджр", Dhuhr:"Зухр", Asr:"Аср", Maghrib:"Магриб", Isha:"Иша"};
       Object.keys(labels).forEach(function(k){
         var mins = parseHM(times[k]);
@@ -778,16 +889,15 @@
       });
     }
 
-    if(scheduleState.works){
-      var ws = parseHM(document.getElementById("work-start").value);
-      var we = parseHM(document.getElementById("work-end").value);
+    if(scheduleState.works && scheduleState.workStart && scheduleState.workEnd){
+      var ws = parseHM(scheduleState.workStart);
+      var we = parseHM(scheduleState.workEnd);
       if(ws !== null && we !== null && we > ws){
         busy.push({start: ws, end: we, label: "Работа"});
       }
     }
 
-    var extraText = document.getElementById("extra-schedule").value;
-    busy = busy.concat(parseExtraSchedule(extraText));
+    busy = busy.concat(scheduleState.extraBusy || []);
 
     busy.sort(function(a,b){ return a.start - b.start; });
 
@@ -831,39 +941,123 @@
     return {busy:busy, gaps:gaps, best:best};
   }
 
-  var recoBox = document.getElementById("reco-box");
-
-  document.getElementById("btn-find-window").addEventListener("click", function(){
+  function showRecommendation(){
     var result = findFreeWindow();
     if(!result.best){
-      recoBox.classList.add("visible");
-      recoBox.innerHTML = "Свободных окон сегодня не нашлось. Я всё равно составлю тренировку на " +
-        (profile.freeTime) + " мин из твоей анкеты.";
+      botSay("Свободных окон сегодня не нашлось. Всё равно составлю тренировку на " + profile.freeTime + " мин из твоей анкеты.");
       scheduleState.recommendation = null;
+    } else {
+      var duration = Math.min(90, result.best.end - result.best.start);
+      scheduleState.recommendation = {start: result.best.start, end: result.best.start + duration, duration: duration};
+      var busyText = result.busy.length
+        ? ("Занято: " + result.busy.map(function(b){ return fmtHM(b.start)+"–"+fmtHM(b.end)+" ("+b.label+")"; }).join(", "))
+        : "";
+      botSay("Рекомендую тренироваться " + fmtHM(result.best.start) + "–" + fmtHM(result.best.start+duration) +
+        " (свободно " + duration + " мин)." + (busyText ? "\n"+busyText : ""));
+    }
+    showHealthNote();
+  }
+
+  function classifyBMI(bmi){
+    if(bmi < 18.5) return {label:"ниже нормы", note:"стоит немного набрать вес.", goal:"gain"};
+    if(bmi < 25) return {label:"в норме", note:"так держать, будем поддерживать форму.", goal:"maintain"};
+    if(bmi < 30) return {label:"выше нормы", note:"полезно немного снизить вес.", goal:"lose"};
+    return {label:"с ожирением", note:"начнём аккуратно, с лёгких нагрузок и контроля питания.", goal:"lose"};
+  }
+
+  function showHealthNote(){
+    var bmi = profile.weight / Math.pow(profile.height/100, 2);
+    var info = classifyBMI(bmi);
+    scheduleState.dietGoal = info.goal;
+    botSay("Кстати, при росте "+profile.height+" см и весе "+profile.weight+" кг твой ИМТ ≈ "+bmi.toFixed(1)+" — это "+info.label+". "+info.note);
+    askDiet();
+  }
+
+  function askDiet(){
+    botSay("Хочешь совет по питанию с халяльными продуктами под твою цель?");
+    showQuickReplies([
+      {label:"Да", action:function(){ scheduleState.wantsDiet = true; showDietSuggestion(); }},
+      {label:"Нет", action:function(){ scheduleState.wantsDiet = false; askReady(); }}
+    ]);
+  }
+
+  function generateDietSuggestion(goal){
+    var data = {
+      gain: {
+        goalLabel: "набор веса",
+        groups: [
+          {title:"Белки", items:["халяльная говядина/баранина","курица","яйца","лосось, тунец"]},
+          {title:"Углеводы", items:["рис","овсянка","цельнозерновой хлеб","батат"]},
+          {title:"Жиры и калории", items:["орехи (миндаль, грецкий)","оливковое масло","авокадо"]},
+          {title:"Перекусы", items:["финики","изюм","банан","йогурт с мёдом"]}
+        ]
+      },
+      maintain: {
+        goalLabel: "поддержание формы",
+        groups: [
+          {title:"Белки", items:["курица/индейка на гриле","рыба","яйца","нут, чечевица"]},
+          {title:"Углеводы", items:["гречка","рис","цельнозерновой хлеб"]},
+          {title:"Овощи и фрукты", items:["сезонные овощи","яблоки","цитрусовые"]},
+          {title:"Перекусы", items:["орехи в меру","финики","натуральный йогурт"]}
+        ]
+      },
+      lose: {
+        goalLabel: "снижение веса",
+        groups: [
+          {title:"Белки", items:["курица/индейка без кожи","рыба","яичный белок","нут"]},
+          {title:"Углеводы", items:["овощи","немного гречки или риса","без сахара и белого хлеба"]},
+          {title:"Жиры", items:["оливковое масло в меру"]},
+          {title:"Перекусы", items:["огурцы, морковь","немного орехов","1-2 финика"]}
+        ]
+      }
+    };
+    return data[goal] || data.maintain;
+  }
+
+  function showDietSuggestion(){
+    var diet = generateDietSuggestion(scheduleState.dietGoal);
+    scheduleState.dietSuggestion = diet;
+    var text = diet.groups.map(function(g){ return g.title + ": " + g.items.join(", "); }).join("\n");
+    botSay("Вот подборка халяльных продуктов под цель «" + diet.goalLabel + "»:\n" + text +
+      "\n\n✅ Без свинины и алкоголя, мясо — халяльной зарезки.");
+    askReady();
+  }
+
+  function askReady(){
+    botSay("Готов? Собираю тренировку.");
+    showQuickReplies([
+      {label:"Составить тренировку 💪", action: proceedToPlan}
+    ]);
+  }
+
+  function renderDietCard(){
+    var card = document.getElementById("diet-card");
+    if(!scheduleState.wantsDiet || !scheduleState.dietSuggestion){
+      card.style.display = "none";
       return;
     }
-    var duration = Math.min(90, result.best.end - result.best.start);
-    scheduleState.recommendation = {start: result.best.start, end: result.best.start + duration, duration: duration};
-
-    var busyHtml = result.busy.length
-      ? "<br>Занято: " + result.busy.map(function(b){ return fmtHM(b.start)+"–"+fmtHM(b.end)+" ("+b.label+")"; }).join(", ")
-      : "";
-    recoBox.classList.add("visible");
-    recoBox.innerHTML = "Рекомендую тренироваться <b>" + fmtHM(result.best.start) + "–" + fmtHM(result.best.start+duration) +
-      "</b> (свободно " + duration + " мин)." + busyHtml;
-  });
+    card.style.display = "block";
+    document.getElementById("diet-speech").textContent =
+      "Подборка халяльных продуктов под цель «" + scheduleState.dietSuggestion.goalLabel +
+      "». Без свинины и алкоголя, мясо — халяльной зарезки.";
+    document.getElementById("diet-groups").innerHTML = scheduleState.dietSuggestion.groups.map(function(g){
+      return '<div class="diet-group"><div class="diet-title">' + g.title + '</div>' +
+        '<div class="diet-items">' + g.items.join(", ") + "</div></div>";
+    }).join("");
+  }
 
   document.getElementById("btn-schedule-back").addEventListener("click", function(){ showScreen("form"); });
 
-  document.getElementById("btn-to-plan").addEventListener("click", function(){
+  function proceedToPlan(){
     if(scheduleState.recommendation){
       profile.freeTime = Math.max(5, Math.min(120, scheduleState.recommendation.duration));
     }
     plan = generatePlan(profile);
     renderPlan(plan, profile);
+    renderDietCard();
     renderStartOptions();
     showScreen("plan");
-  });
+  }
 
   // ---------- Генерация плана ----------
   function generatePlan(p){
