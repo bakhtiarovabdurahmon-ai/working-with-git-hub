@@ -25,6 +25,21 @@ function renderHeader(activeSearchValue = '') {
           </a>
         </div>
       </div>
+      <div class="container promo-strip-wrap">
+        <div class="promo-strip" id="promo-strip">
+          ${PRODUCTS.filter((p) => p.discount >= 20)
+            .slice(0, 12)
+            .map(
+              (p) => `
+              <a href="product.html?id=${p.id}" class="promo-item" style="background:${p.color}">
+                <span class="promo-item-badge">-${p.discount}%</span>
+                <span class="promo-item-emoji">${p.emoji}</span>
+                <span class="promo-item-price">${formatPrice(p.price)}</span>
+              </a>`
+            )
+            .join('')}
+        </div>
+      </div>
     </div>
     <nav class="category-nav" id="category-nav">
       <div class="container category-nav-inner">
@@ -43,6 +58,31 @@ function renderHeader(activeSearchValue = '') {
   const toggle = document.getElementById('catalog-toggle');
   const nav = document.getElementById('category-nav');
   toggle.addEventListener('click', () => nav.classList.toggle('open'));
+}
+
+function renderMobileTabbar() {
+  if (document.getElementById('mobile-tabbar')) return;
+  const path = window.location.pathname.split('/').pop() || 'index.html';
+  const tabs = [
+    { href: 'index.html', icon: '🏠', label: 'Главная', match: ['index.html', ''] },
+    { href: 'catalog.html', icon: '📦', label: 'Каталог', match: ['catalog.html'] },
+    { href: 'favorites.html', icon: '♡', label: 'Избранное', match: ['favorites.html'], badge: 'fav' },
+    { href: 'cart.html', icon: '🛒', label: 'Корзина', match: ['cart.html'], badge: 'cart' },
+  ];
+  const bar = document.createElement('nav');
+  bar.id = 'mobile-tabbar';
+  bar.innerHTML = tabs
+    .map((t) => {
+      const active = t.match.includes(path);
+      const badgeAttr = t.badge === 'fav' ? 'data-fav-count' : t.badge === 'cart' ? 'data-cart-count' : '';
+      return `
+        <a href="${t.href}" class="tabbar-item ${active ? 'active' : ''}">
+          <span class="tabbar-icon">${t.icon}${badgeAttr ? `<span class="badge tabbar-badge" ${badgeAttr}>0</span>` : ''}</span>
+          <span class="tabbar-label">${t.label}</span>
+        </a>`;
+    })
+    .join('');
+  document.body.appendChild(bar);
 }
 
 function renderFooter() {
@@ -100,4 +140,6 @@ function starsHtml(rating) {
 document.addEventListener('DOMContentLoaded', () => {
   renderHeader();
   renderFooter();
+  renderMobileTabbar();
+  updateHeaderCounters();
 });
