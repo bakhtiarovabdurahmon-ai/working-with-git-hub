@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Избранное — WildBasket</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <main class="container">
+    <h1>Избранное</h1>
+
+    <div class="product-grid" id="favorites-grid"></div>
+    <div class="empty-state" id="favorites-empty" style="display:none">
+      <span class="empty-state-emoji">♡</span>
+      <h2>Список избранного пуст</h2>
+      <p>Добавляйте понравившиеся товары нажатием на сердечко.</p>
+      <a class="btn btn-primary" href="catalog.html">В каталог</a>
+    </div>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script src="js/data.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/product-card.js"></script>
+  <script src="js/favorites.js"></script>
+</body>
+</html>
