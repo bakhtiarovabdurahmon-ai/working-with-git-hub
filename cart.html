@@ -38,16 +38,21 @@
           <span id="summary-total">0 ₽</span>
         </div>
         <button class="btn btn-primary" id="checkout-btn">Оформить заказ</button>
-        <div class="checkout-success" id="checkout-success">Заказ оформлен! Это демо-магазин, оплата не выполнялась.</div>
+        <div class="checkout-success" id="checkout-success">Заказ оформлен! Это демо-магазин, реальная оплата не выполнялась.</div>
       </aside>
     </div>
   </main>
 
   <footer id="site-footer"></footer>
 
+  <div class="pay-backdrop" id="pay-backdrop">
+    <div class="pay-modal" id="pay-content"></div>
+  </div>
+
   <script src="js/data.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/layout.js"></script>
   <script src="js/cart-page.js"></script>
+  <script src="js/payment.js"></script>
 </body>
 </html>

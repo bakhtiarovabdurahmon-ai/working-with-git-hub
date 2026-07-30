@@ -86,12 +86,10 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
-  document.getElementById('checkout-btn').addEventListener('click', () => {
-    writeStore(CART_KEY, {});
-    updateHeaderCounters();
+  window.onPaymentDone = () => {
     render();
     document.getElementById('checkout-success').style.display = 'block';
-  });
+  };
 
   render();
 });
