@@ -92,7 +92,7 @@ function renderFooter() {
     <div class="container footer-inner">
       <div class="footer-col">
         <div class="logo footer-logo">Wild<span>Basket</span></div>
-        <p class="footer-text">Учебный клон маркетплейса. Демонстрационный проект, не является настоящим интернет-магазином.</p>
+        <p class="footer-text">Магазин мужской одежды. Учебный демо-проект, не является настоящим интернет-магазином.</p>
       </div>
       <div class="footer-col">
         <h4>Покупателям</h4>
