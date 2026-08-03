@@ -1,7 +1,7 @@
 // Мок-данные каталога товаров (в реальном проекте — запрос к API)
 // Магазин специализируется только на мужской одежде
 
-const CATEGORIES = [
+export const CATEGORIES = [
   { id: 'tshirts', title: 'Футболки и поло', icon: '👕' },
   { id: 'shirts', title: 'Рубашки', icon: '👔' },
   { id: 'pants', title: 'Брюки и джинсы', icon: '👖' },
@@ -81,13 +81,13 @@ function buildProducts() {
   });
 }
 
-const PRODUCTS = buildProducts();
+export const PRODUCTS = buildProducts();
 
-function getProductById(id) {
+export function getProductById(id) {
   return PRODUCTS.find((p) => p.id === id);
 }
 
-function getCategoryTitle(id) {
+export function getCategoryTitle(id) {
   const cat = CATEGORIES.find((c) => c.id === id);
   return cat ? cat.title : '';
 }
