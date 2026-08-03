@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getProductById } from '../data.js';
 import { useStore, formatPrice } from '../store.jsx';
 import PaymentModal from '../components/PaymentModal.jsx';
 
 export default function Cart() {
-  const { cart, setCartQty, removeFromCart, clearCart } = useStore();
+  const { cart, setCartQty, removeFromCart, clearCart, getProduct } = useStore();
   const [payOpen, setPayOpen] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -13,7 +12,7 @@ export default function Cart() {
   let total = 0;
   let totalOld = 0;
   let itemsCount = 0;
-  const items = ids.map((id) => getProductById(id)).filter(Boolean);
+  const items = ids.map((id) => getProduct(id)).filter(Boolean);
   items.forEach((p) => {
     const qty = cart[p.id];
     total += p.price * qty;
@@ -47,8 +46,8 @@ export default function Cart() {
                 const qty = cart[p.id];
                 return (
                   <div className="cart-item" key={p.id}>
-                    <Link to={`/product/${p.id}`} className="cart-item-media" style={{ background: p.color }}>
-                      {p.emoji}
+                    <Link to={`/product/${p.id}`} className="cart-item-media" style={{ background: p.image ? '#fff' : p.color }}>
+                      {p.image ? <img src={p.image} alt={p.title} className="cart-item-photo" /> : p.emoji}
                     </Link>
                     <div className="cart-item-info">
                       <Link to={`/product/${p.id}`} className="cart-item-title">{p.title}</Link>

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CATEGORIES, PRODUCTS, getCategoryTitle } from '../data.js';
+import { CATEGORIES, getCategoryTitle } from '../data.js';
+import { useStore } from '../store.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
 export default function Catalog() {
+  const { allProducts } = useStore();
   const [searchParams] = useSearchParams();
   const q = searchParams.get('q') || '';
   const initialCategory = searchParams.get('category');
@@ -25,7 +27,7 @@ export default function Catalog() {
   }
 
   const list = useMemo(() => {
-    let result = PRODUCTS.slice();
+    let result = allProducts.slice();
 
     if (q) {
       const ql = q.toLowerCase();
@@ -61,7 +63,7 @@ export default function Catalog() {
     }
 
     return result;
-  }, [q, categories, sort, minPrice, maxPrice]);
+  }, [allProducts, q, categories, sort, minPrice, maxPrice]);
 
   const title = q ? `Результаты по запросу «${q}»` : categories.length === 1 ? getCategoryTitle(categories[0]) : 'Все товары';
 

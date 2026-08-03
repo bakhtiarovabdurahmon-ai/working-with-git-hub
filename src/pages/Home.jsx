@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
-import { CATEGORIES, PRODUCTS } from '../data.js';
+import { CATEGORIES } from '../data.js';
+import { useStore } from '../store.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
 export default function Home() {
-  const deals = PRODUCTS.filter((p) => p.discount >= 20).slice(0, 8);
-  const popular = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 8);
+  const { allProducts } = useStore();
+  const deals = allProducts.filter((p) => p.discount >= 20).slice(0, 8);
+  const popular = [...allProducts].sort((a, b) => b.reviews - a.reviews).slice(0, 8);
 
   return (
     <main className="container">

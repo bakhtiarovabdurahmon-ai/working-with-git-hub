@@ -10,8 +10,12 @@ export default function ProductCard({ product: p }) {
 
   return (
     <div className="product-card">
-      <Link className="product-card-media" to={`/product/${p.id}`} style={{ background: p.color }}>
-        <span className="product-card-emoji">{p.emoji}</span>
+      <Link className="product-card-media" to={`/product/${p.id}`} style={{ background: p.image ? '#fff' : p.color }}>
+        {p.image ? (
+          <img className="product-card-photo" src={p.image} alt={p.title} />
+        ) : (
+          <span className="product-card-emoji">{p.emoji}</span>
+        )}
         {p.discount ? <span className="badge-discount">-{p.discount}%</span> : null}
         <button
           type="button"

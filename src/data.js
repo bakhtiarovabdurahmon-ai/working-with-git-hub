@@ -83,6 +83,8 @@ function buildProducts() {
 
 export const PRODUCTS = buildProducts();
 
+export const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
+
 export function getProductById(id) {
   return PRODUCTS.find((p) => p.id === id);
 }

@@ -8,6 +8,8 @@ import Catalog from './pages/Catalog.jsx';
 import Product from './pages/Product.jsx';
 import Cart from './pages/Cart.jsx';
 import Favorites from './pages/Favorites.jsx';
+import Login from './pages/Login.jsx';
+import Admin from './pages/Admin.jsx';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -31,6 +33,8 @@ export default function App() {
         <Route path="/product/:id" element={<Product />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/favorites" element={<Favorites />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
 
       <Footer />

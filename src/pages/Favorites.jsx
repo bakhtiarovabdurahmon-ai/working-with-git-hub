@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { getProductById } from '../data.js';
 import { useStore } from '../store.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
 export default function Favorites() {
-  const { favorites } = useStore();
-  const products = Object.keys(favorites).map(getProductById).filter(Boolean);
+  const { favorites, getProduct } = useStore();
+  const products = Object.keys(favorites).map(getProduct).filter(Boolean);
 
   return (
     <main className="container">

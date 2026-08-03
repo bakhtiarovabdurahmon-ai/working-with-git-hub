@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getProductById, getCategoryTitle, PRODUCTS } from '../data.js';
+import { getCategoryTitle } from '../data.js';
 import { useStore, formatPrice } from '../store.jsx';
 import Stars from '../components/Stars.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
 export default function Product() {
   const { id } = useParams();
-  const product = getProductById(id);
-  const { isFavorite, toggleFavorite, addToCart } = useStore();
+  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct } = useStore();
+  const product = getProduct(id);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(product ? product.sizes[0] : null);
   const [addedText, setAddedText] = useState(null);
@@ -34,7 +34,7 @@ export default function Product() {
   }
 
   const fav = isFavorite(product.id);
-  const related = PRODUCTS.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const related = allProducts.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
 
   function handleAddToCart() {
     addToCart(product.id, qty);
@@ -50,8 +50,12 @@ export default function Product() {
         <span>{product.title}</span>
       </div>
       <div className="product-page">
-        <div className="product-gallery" style={{ background: product.color }}>
-          <span className="product-gallery-emoji">{product.emoji}</span>
+        <div className="product-gallery" style={{ background: product.image ? '#fff' : product.color }}>
+          {product.image ? (
+            <img className="product-gallery-photo" src={product.image} alt={product.title} />
+          ) : (
+            <span className="product-gallery-emoji">{product.emoji}</span>
+          )}
           {product.discount ? <span className="badge-discount large">-{product.discount}%</span> : null}
         </div>
         <div className="product-info">
