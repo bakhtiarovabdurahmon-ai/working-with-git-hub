@@ -1246,6 +1246,18 @@ a {
   background: var(--text);
 }
 
+.qr-real {
+  display: block;
+  width: 168px;
+  height: 168px;
+  margin: 0 auto 8px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 12px;
+  box-sizing: border-box;
+}
+
 .qr-note {
   text-align: center;
   font-size: 11px;

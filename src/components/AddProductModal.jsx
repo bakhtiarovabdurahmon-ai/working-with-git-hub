@@ -29,7 +29,7 @@ function resizeImageToDataUrl(file) {
 }
 
 export default function AddProductModal({ onClose }) {
-  const { addProduct } = useStore();
+  const { addProduct, serverMode } = useStore();
   const { currentUser } = useAuth();
 
   const [title, setTitle] = useState('');
@@ -43,6 +43,7 @@ export default function AddProductModal({ onClose }) {
   const [imageError, setImageError] = useState(null);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   function toggleSize(s) {
     setSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
@@ -60,7 +61,7 @@ export default function AddProductModal({ onClose }) {
     }
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
 
@@ -76,27 +77,33 @@ export default function AddProductModal({ onClose }) {
 
     const oldPrice = discountNum > 0 ? Math.round(priceNum / (1 - discountNum / 100)) : null;
 
-    addProduct({
-      title: title.trim(),
-      category,
-      brand: currentUser?.name || 'Продавец',
-      price: priceNum,
-      oldPrice,
-      discount: discountNum,
-      rating: 5,
-      reviews: 0,
-      emoji: imageData ? null : '🛍️',
-      image: imageData,
-      color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 92%)`,
-      description: description.trim() || `${title.trim()}. Добавлено продавцом.`,
-      sizes,
-      qty: qtyNum,
-      inStock: qtyNum > 0,
-      sellerEmail: currentUser?.email || null,
-    });
-
-    setDone(true);
-    setTimeout(onClose, 900);
+    setSaving(true);
+    try {
+      await addProduct({
+        title: title.trim(),
+        category,
+        brand: currentUser?.name || 'Продавец',
+        price: priceNum,
+        oldPrice,
+        discount: discountNum,
+        rating: 5,
+        reviews: 0,
+        emoji: imageData ? null : '🛍️',
+        image: imageData,
+        color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 92%)`,
+        description: description.trim() || `${title.trim()}. Добавлено продавцом.`,
+        sizes,
+        qty: qtyNum,
+        inStock: qtyNum > 0,
+        sellerEmail: currentUser?.email || null,
+      });
+      setDone(true);
+      setTimeout(onClose, 900);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -105,6 +112,7 @@ export default function AddProductModal({ onClose }) {
         <button className="pay-close-btn" type="button" onClick={onClose}>✕</button>
         <div className="pay-eyebrow">Новый товар</div>
         <h2 className="pay-title">Добавить товар</h2>
+        <span className="pay-demo-flag">{serverMode ? '🟢 Сохранится на сервере, видно всем' : '🟡 Автономный режим: только в этом браузере'}</span>
 
         {done ? (
           <div className="pay-status-text" style={{ textAlign: 'left', color: 'var(--success)' }}>✓ Товар добавлен в каталог</div>
@@ -174,8 +182,8 @@ export default function AddProductModal({ onClose }) {
 
             {error ? <div className="form-error">{error}</div> : null}
 
-            <button className="btn btn-primary btn-large" style={{ width: '100%', marginTop: 8 }} type="submit">
-              Добавить товар
+            <button className="btn btn-primary btn-large" style={{ width: '100%', marginTop: 8 }} type="submit" disabled={saving}>
+              {saving ? 'Сохраняем…' : 'Добавить товар'}
             </button>
           </form>
         )}

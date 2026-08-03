@@ -1,10 +1,30 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth, ROLE_LABELS } from '../auth.jsx';
 import { useStore, formatPrice } from '../store.jsx';
 
 export default function Admin() {
-  const { currentUser, users, setRole } = useAuth();
+  const { currentUser, users, setRole, serverMode } = useAuth();
   const { customProducts, removeProduct } = useStore();
+  const [actionError, setActionError] = useState(null);
+
+  async function handleRoleChange(email, role) {
+    setActionError(null);
+    try {
+      await setRole(email, role);
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
+
+  async function handleRemoveProduct(id) {
+    setActionError(null);
+    try {
+      await removeProduct(id);
+    } catch (err) {
+      setActionError(err.message);
+    }
+  }
 
   if (!currentUser) {
     return (
@@ -34,6 +54,10 @@ export default function Admin() {
   return (
     <main className="container">
       <h1>Админ-панель</h1>
+      <p className="pay-sub">
+        {serverMode ? '🟢 Данные хранятся на сервере (MongoDB), общие для всех посетителей.' : '🟡 Автономный режим: данные только в этом браузере.'}
+      </p>
+      {actionError ? <div className="form-error">{actionError}</div> : null}
 
       <section className="section">
         <div className="section-title"><span>Пользователи и роли</span></div>
@@ -55,7 +79,7 @@ export default function Admin() {
                     <select
                       className="form-input"
                       value={u.role}
-                      onChange={(e) => setRole(u.email, e.target.value)}
+                      onChange={(e) => handleRoleChange(u.email, e.target.value)}
                       disabled={u.email === currentUser.email}
                     >
                       <option value="customer">{ROLE_LABELS.customer}</option>
@@ -95,7 +119,7 @@ export default function Admin() {
                     <td>{formatPrice(p.price)}</td>
                     <td>{p.qty}</td>
                     <td>
-                      <button type="button" className="user-bar-btn" onClick={() => removeProduct(p.id)}>Удалить</button>
+                      <button type="button" className="user-bar-btn" onClick={() => handleRemoveProduct(p.id)}>Удалить</button>
                     </td>
                   </tr>
                 ))}

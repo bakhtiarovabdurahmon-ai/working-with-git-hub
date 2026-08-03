@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
 
 export default function Login() {
-  const { register, login, currentUser } = useAuth();
+  const { register, login, currentUser, serverMode } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState('login');
   const [name, setName] = useState('');
@@ -11,6 +11,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   if (currentUser) {
     return (
@@ -24,19 +25,22 @@ export default function Login() {
     );
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+    setSubmitting(true);
     try {
       if (mode === 'register') {
-        const user = register(name, email, password);
+        const user = await register(name, email, password);
         setNotice(user.role === 'admin' ? 'Вы первый пользователь — вам выдана роль администратора.' : null);
       } else {
-        login(email, password);
+        await login(email, password);
       }
       navigate('/');
     } catch (err) {
       setError(err.message);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -44,10 +48,19 @@ export default function Login() {
     <main className="container">
       <div className="auth-box">
         <h1>{mode === 'login' ? 'Вход' : 'Регистрация'}</h1>
-        <p className="pay-sub">
-          ⚠ Демо-аккаунты: данные хранятся только в этом браузере (localStorage), без сервера и шифрования.
-          Не используйте настоящий пароль, которым вы пользуетесь где-то ещё.
-        </p>
+
+        {serverMode === null ? (
+          <p className="pay-sub">Подключение к серверу…</p>
+        ) : serverMode ? (
+          <p className="pay-sub">
+            🟢 Подключено к серверу: аккаунты хранятся в базе данных (пароли хешируются), видны при заходе с любого устройства.
+          </p>
+        ) : (
+          <p className="pay-sub">
+            🟡 Автономный режим: сервер недоступен, аккаунт сохранится только в этом браузере (localStorage), без шифрования.
+            Не используйте настоящий пароль, которым вы пользуетесь где-то ещё.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit}>
           {mode === 'register' ? (
@@ -68,8 +81,8 @@ export default function Login() {
           {error ? <div className="form-error">{error}</div> : null}
           {notice ? <div className="form-notice">{notice}</div> : null}
 
-          <button className="btn btn-primary btn-large" style={{ width: '100%' }} type="submit">
-            {mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+          <button className="btn btn-primary btn-large" style={{ width: '100%' }} type="submit" disabled={serverMode === null || submitting}>
+            {submitting ? 'Подождите…' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
           </button>
         </form>
 

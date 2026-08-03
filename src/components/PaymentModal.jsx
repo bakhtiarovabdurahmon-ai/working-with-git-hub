@@ -4,29 +4,35 @@
 // с платёжным провайдером/онлайн-кассой (54-ФЗ) — здесь этого нет и быть не может.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { formatPrice } from '../store.jsx';
+
+// Настоящий статический QR для перевода через Kompanion Bank (Кыргызстан).
+// Сумма в него не зашита (как у большинства статических личных QR) —
+// покупатель вводит сумму вручную в приложении банка при сканировании.
+const KOMPANION_QR_PAYLOAD =
+  '0002010102115401032550015qr.kompanion.kg010410051012996755311172120211130212330401005303417520460125909KOMPANION3410DILFUZA+S.6304C5A5';
 
 const DEMO_RECIPIENT = {
   phone: '755 311172',
-  name: 'ИП Демонстрационный (тест)',
+  name: 'DILFUZA S.',
 };
 
-function seededQr(n) {
-  return Math.abs((Math.sin(n * 12.9898) * 43758.5453) % 1);
-}
+function RealQr({ data }) {
+  const [src, setSrc] = useState(null);
 
-function QrMock({ seed }) {
-  const cells = [];
-  for (let i = 0; i < 121; i++) {
-    cells.push(seededQr(seed + i) > 0.52);
-  }
-  return (
-    <div className="qr-mock">
-      {cells.map((on, i) => (
-        <span key={i} className={on ? 'on' : ''} />
-      ))}
-    </div>
-  );
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL(data, { width: 240, margin: 1 }).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [data]);
+
+  if (!src) return <div className="qr-mock" />;
+  return <img src={src} alt="QR для перевода через Kompanion Bank" className="qr-real" />;
 }
 
 export default function PaymentModal({ items, cart, total, onClose, onDone }) {
@@ -84,13 +90,13 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
           <>
             <div className="pay-eyebrow">Оплата заказа {order.id}</div>
             <h2 className="pay-title">Переведите по реквизитам</h2>
-            <span className="pay-demo-flag">⚠ Демо-режим: проверка перевода имитируется, банк не подключён</span>
+            <span className="pay-demo-flag">⚠ Демо-режим: проверка квитанции ниже имитируется — сам перевод по QR настоящий</span>
             <div className="pay-amount">
               <div className="pay-amount-label">Сумма к оплате</div>
               <div className="pay-amount-value">{formatPrice(total)}</div>
             </div>
-            <QrMock seed={order.id.length + 3} />
-            <div className="qr-note">QR — иллюстративная заглушка (не привязан к банку/СБП)</div>
+            <RealQr data={KOMPANION_QR_PAYLOAD} />
+            <div className="qr-note">Отсканируйте QR в приложении банка и введите сумму вручную (Kompanion Bank)</div>
             <div className="pay-row">
               <div>
                 <div className="pay-row-k">Телефон получателя</div>
