@@ -126,7 +126,7 @@ export default function AddProductModal({ onClose }) {
 
             <div className="form-row form-row-split">
               <div>
-                <label className="form-label">Цена, ₽</label>
+                <label className="form-label">Цена, сом</label>
                 <input className="form-input" type="number" min="1" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="2990" />
               </div>
               <div>

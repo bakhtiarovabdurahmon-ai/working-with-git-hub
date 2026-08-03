@@ -7,8 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatPrice } from '../store.jsx';
 
 const DEMO_RECIPIENT = {
-  phone: '+7 900 000-00-00',
-  card: '2200 0000 0000 0000',
+  phone: '755 311172',
   name: 'ИП Демонстрационный (тест)',
 };
 
@@ -85,7 +84,7 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
           <>
             <div className="pay-eyebrow">Оплата заказа {order.id}</div>
             <h2 className="pay-title">Переведите по реквизитам</h2>
-            <span className="pay-demo-flag">⚠ Демо-реквизиты, не для реальных переводов</span>
+            <span className="pay-demo-flag">⚠ Демо-режим: проверка перевода имитируется, банк не подключён</span>
             <div className="pay-amount">
               <div className="pay-amount-label">Сумма к оплате</div>
               <div className="pay-amount-value">{formatPrice(total)}</div>
@@ -98,13 +97,6 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
                 <div className="pay-row-v">{DEMO_RECIPIENT.phone}</div>
               </div>
               <button className="pay-copy-btn" type="button" onClick={() => copy(DEMO_RECIPIENT.phone)}>Скопировать</button>
-            </div>
-            <div className="pay-row">
-              <div>
-                <div className="pay-row-k">Номер карты</div>
-                <div className="pay-row-v">{DEMO_RECIPIENT.card}</div>
-              </div>
-              <button className="pay-copy-btn" type="button" onClick={() => copy(DEMO_RECIPIENT.card)}>Скопировать</button>
             </div>
             <div className="pay-row">
               <div>

@@ -24,7 +24,7 @@ function writeStore(key, value) {
 }
 
 export function formatPrice(value) {
-  return value.toLocaleString('ru-RU') + ' ₽';
+  return value.toLocaleString('ru-RU') + ' сом';
 }
 
 const StoreContext = createContext(null);

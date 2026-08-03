@@ -81,7 +81,7 @@ export default function Catalog() {
             ))}
           </div>
 
-          <h3>Цена, ₽</h3>
+          <h3>Цена, сом</h3>
           <div className="price-range">
             <input type="number" placeholder="от" value={minPrice} onChange={(e) => setMinPrice(e.target.value)} />
             <input type="number" placeholder="до" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} />
