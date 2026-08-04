@@ -3,7 +3,10 @@
 // ссылки-артефакта нет бэкенда — приложение сама автоматически
 // переключается в локальный режим (localStorage), см. auth.jsx и store.jsx.
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api';
+// Относительный путь: в dev-режиме Vite сам проксирует /api на сервер
+// (см. vite.config.js), а в проде сервер отдаёт и API, и сам сайт с одного
+// адреса — так что localhost прописывать нигде не нужно.
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 let availabilityPromise = null;
 

@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: wildbasket
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM
+        value: "WildBasket <onboarding@resend.dev>"
