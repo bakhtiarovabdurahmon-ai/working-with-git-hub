@@ -1,13 +1,15 @@
 // Аккаунты и роли (admin/seller/customer).
 //
-// Если backend (server/, Express + MongoDB) доступен — регистрация, вход и
-// список пользователей идут через настоящий сервер: пароли хешируются
-// (bcrypt) и хранятся в MongoDB, а не в браузере.
+// Если backend (server/, Express + MongoDB) доступен — вход идёт без пароля,
+// по коду из письма (см. server/routes/auth.js, отправка через Resend):
+// requestCode() шлёт код на email, verifyCode() подтверждает его и создаёт
+// или находит аккаунт в MongoDB.
 //
 // Если backend недоступен (например, у опубликованной статической ссылки
-// нет сервера) — приложение автоматически откатывается на локальный режим:
-// аккаунты хранятся только в этом браузере (localStorage), без шифрования.
-// Это заметно более слабый режим и годится только как демо.
+// нет сервера — слать письма всё равно неоткуда) — приложение автоматически
+// откатывается на локальный режим: обычная пара email+пароль, аккаунт
+// хранится только в этом браузере (localStorage), без шифрования. Это
+// заметно более слабый режим и годится только как демо.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, checkServer } from './api.js';
@@ -63,19 +65,27 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const register = useCallback(
-    async (name, email, password) => {
+  // Серверный режим: вход по коду из письма (без пароля).
+  const requestCode = useCallback(async (name, email) => {
+    const key = email.trim().toLowerCase();
+    if (!key) throw new Error('Укажите email');
+    await api.requestCode(key, name);
+  }, []);
+
+  const verifyCode = useCallback(async (email, code) => {
+    const key = email.trim().toLowerCase();
+    const user = await api.verifyCode(key, code);
+    setUsers((prev) => ({ ...prev, [key]: user }));
+    setSessionEmail(key);
+    localStorage.setItem(SESSION_KEY, key);
+    return user;
+  }, []);
+
+  // Локальный режим (сервер недоступен): обычная пара email+пароль в localStorage.
+  const registerLocal = useCallback(
+    (name, email, password) => {
       const key = email.trim().toLowerCase();
       if (!key || !password) throw new Error('Заполните email и пароль');
-
-      if (serverMode) {
-        const user = await api.register(name, key, password);
-        setUsers((prev) => ({ ...prev, [key]: user }));
-        setSessionEmail(key);
-        localStorage.setItem(SESSION_KEY, key);
-        return user;
-      }
-
       if (users[key]) throw new Error('Такой email уже зарегистрирован');
       const isFirstUser = Object.keys(users).length === 0;
       const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'admin' : 'customer' };
@@ -86,28 +96,19 @@ export function AuthProvider({ children }) {
       localStorage.setItem(SESSION_KEY, key);
       return user;
     },
-    [users, serverMode]
+    [users]
   );
 
-  const login = useCallback(
-    async (email, password) => {
+  const loginLocal = useCallback(
+    (email, password) => {
       const key = email.trim().toLowerCase();
-
-      if (serverMode) {
-        const user = await api.login(key, password);
-        setUsers((prev) => ({ ...prev, [key]: user }));
-        setSessionEmail(key);
-        localStorage.setItem(SESSION_KEY, key);
-        return user;
-      }
-
       const user = users[key];
       if (!user || user.password !== password) throw new Error('Неверный email или пароль');
       setSessionEmail(key);
       localStorage.setItem(SESSION_KEY, key);
       return user;
     },
-    [users, serverMode]
+    [users]
   );
 
   const logout = useCallback(() => {
@@ -140,15 +141,17 @@ export function AuthProvider({ children }) {
     () => ({
       users,
       currentUser,
-      register,
-      login,
+      requestCode,
+      verifyCode,
+      registerLocal,
+      loginLocal,
       logout,
       setRole,
       isAdmin: currentUser?.role === 'admin',
       isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin',
       serverMode,
     }),
-    [users, currentUser, register, login, logout, setRole, serverMode]
+    [users, currentUser, requestCode, verifyCode, registerLocal, loginLocal, logout, setRole, serverMode]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

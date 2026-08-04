@@ -1,46 +1,62 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
+import VerificationCode from '../models/VerificationCode.js';
+import { sendVerificationEmail } from '../lib/mailer.js';
 
 const router = Router();
+const CODE_TTL_MS = 10 * 60 * 1000;
 
-router.post('/register', async (req, res) => {
+function generateCode() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+router.post('/request-code', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, name } = req.body;
     const key = (email || '').trim().toLowerCase();
-    if (!key || !password) return res.status(400).json({ error: 'Заполните email и пароль' });
+    if (!key) return res.status(400).json({ error: 'Укажите email' });
 
-    const existing = await User.findOne({ email: key });
-    if (existing) return res.status(409).json({ error: 'Такой email уже зарегистрирован' });
+    const code = generateCode();
+    const expiresAt = new Date(Date.now() + CODE_TTL_MS);
 
-    const isFirstUser = (await User.countDocuments({})) === 0;
-    const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      name: (name || '').trim() || key,
-      email: key,
-      password: passwordHash,
-      role: isFirstUser ? 'admin' : 'customer',
-    });
+    // Only the latest code for this email is valid.
+    await VerificationCode.deleteMany({ email: key });
+    await VerificationCode.create({ email: key, code, name: (name || '').trim(), expiresAt });
 
-    res.status(201).json(user.toJSON());
+    await sendVerificationEmail(key, code);
+    res.json({ ok: true });
   } catch (err) {
-    res.status(500).json({ error: 'Не удалось зарегистрировать пользователя' });
+    res.status(500).json({ error: err.message || 'Не удалось отправить код' });
   }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/verify-code', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, code } = req.body;
     const key = (email || '').trim().toLowerCase();
-    const user = await User.findOne({ email: key });
-    if (!user) return res.status(401).json({ error: 'Неверный email или пароль' });
+    if (!key || !code) return res.status(400).json({ error: 'Укажите email и код' });
 
-    const ok = await bcrypt.compare(password || '', user.password);
-    if (!ok) return res.status(401).json({ error: 'Неверный email или пароль' });
+    const record = await VerificationCode.findOne({ email: key, code: String(code).trim() });
+    if (!record) return res.status(401).json({ error: 'Неверный код' });
+    if (record.expiresAt < new Date()) {
+      await record.deleteOne();
+      return res.status(401).json({ error: 'Код истёк, запросите новый' });
+    }
 
+    let user = await User.findOne({ email: key });
+    if (!user) {
+      const isFirstUser = (await User.countDocuments({})) === 0;
+      user = await User.create({
+        name: record.name || key,
+        email: key,
+        role: isFirstUser ? 'admin' : 'customer',
+      });
+    }
+
+    await VerificationCode.deleteMany({ email: key });
     res.json(user.toJSON());
   } catch (err) {
-    res.status(500).json({ error: 'Не удалось войти' });
+    res.status(500).json({ error: 'Не удалось подтвердить код' });
   }
 });
 

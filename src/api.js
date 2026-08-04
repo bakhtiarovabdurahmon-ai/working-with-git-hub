@@ -36,9 +36,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  register: (name, email, password) =>
-    request('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password }) }),
-  login: (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: JSON.stringify({ email, name }) }),
+  verifyCode: (email, code) => request('/auth/verify-code', { method: 'POST', body: JSON.stringify({ email, code }) }),
   getUsers: () => request('/users'),
   setUserRole: (email, role) =>
     request(`/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
