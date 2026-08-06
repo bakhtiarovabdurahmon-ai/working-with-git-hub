@@ -37,7 +37,7 @@ mongoose
   .connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 })
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`WildBasket API listening on http://localhost:${PORT}`);
+      console.log(`ОдеждаPRO API listening on http://localhost:${PORT}`);
     });
   })
   .catch((err) => {

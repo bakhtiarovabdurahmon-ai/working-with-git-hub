@@ -7,7 +7,7 @@ export default function Footer() {
       <div className="container footer-inner">
         <div className="footer-col">
           <div className="logo footer-logo">
-            Wild<span>Basket</span>
+            Одежда<span>PRO</span>
           </div>
           <p className="footer-text">Магазин мужской одежды. Учебный демо-проект, не является настоящим интернет-магазином.</p>
         </div>
@@ -33,12 +33,12 @@ export default function Footer() {
           <h4>Контакты</h4>
           <ul>
             <li>8 800 000-00-00</li>
-            <li>support@wildbasket.demo</li>
+            <li>support@odezhdapro.demo</li>
           </ul>
         </div>
       </div>
       <div className="footer-bottom">
-        <div className="container">© {new Date().getFullYear()} WildBasket — демо-проект</div>
+        <div className="container">© {new Date().getFullYear()} ОдеждаPRO — демо-проект</div>
       </div>
     </footer>
   );

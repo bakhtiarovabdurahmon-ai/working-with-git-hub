@@ -14,7 +14,7 @@ export default function Product() {
   const [addedText, setAddedText] = useState(null);
 
   useEffect(() => {
-    if (product) document.title = product.title + ' — WildBasket';
+    if (product) document.title = product.title + ' — ОдеждаPRO';
   }, [product]);
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: wildbasket
+    name: odezhdapro
     env: node
     plan: free
     buildCommand: npm install && npm run build
@@ -11,4 +11,4 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: RESEND_FROM
-        value: "WildBasket <onboarding@resend.dev>"
+        value: "ОдеждаPRO <onboarding@resend.dev>"

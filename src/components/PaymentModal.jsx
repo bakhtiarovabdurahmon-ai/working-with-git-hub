@@ -44,7 +44,7 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
 
   const order = useMemo(
     () => ({
-      id: 'WB-' + Math.floor(100000 + Math.random() * 900000),
+      id: 'OP-' + Math.floor(100000 + Math.random() * 900000),
       date: new Date(),
     }),
     []

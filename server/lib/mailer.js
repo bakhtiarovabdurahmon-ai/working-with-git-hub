@@ -1,5 +1,5 @@
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.RESEND_FROM || 'WildBasket <onboarding@resend.dev>';
+const FROM = process.env.RESEND_FROM || 'ОдеждаPRO <onboarding@resend.dev>';
 
 export async function sendVerificationEmail(to, code) {
   if (!RESEND_API_KEY) {
@@ -18,7 +18,7 @@ export async function sendVerificationEmail(to, code) {
       subject: `Код подтверждения: ${code}`,
       html: `
         <div style="font-family: sans-serif; max-width: 420px">
-          <p>Ваш код для входа в WildBasket:</p>
+          <p>Ваш код для входа в ОдеждаPRO:</p>
           <p style="font-size: 32px; font-weight: 800; letter-spacing: 6px">${code}</p>
           <p style="color: #6b6b6b; font-size: 13px">Код действует 10 минут. Если это были не вы — просто проигнорируйте письмо.</p>
         </div>

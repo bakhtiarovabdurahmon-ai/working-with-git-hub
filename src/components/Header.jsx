@@ -26,7 +26,7 @@ export default function Header() {
     <div className="header-top">
       <div className="container header-top-inner">
         <Link className="logo" to="/">
-          Wild<span>Basket</span>
+          Одежда<span>PRO</span>
         </Link>
         <button className="burger" type="button" onClick={() => setNavOpen((v) => !v)}>
           <span className="burger-icon">☰</span> Каталог
@@ -34,7 +34,7 @@ export default function Header() {
         <form className="search-form" onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Найти на WildBasket"
+            placeholder="Найти на ОдеждаPRO"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="off"
