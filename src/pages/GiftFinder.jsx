@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store.jsx';
 import { sizeFromMeasurements, styleFromAge, averageColorFromImage, pickGiftProducts } from '../giftFinder.js';
 import ProductCard from '../components/ProductCard.jsx';
+import TryOnModal from '../components/TryOnModal.jsx';
 
 export default function GiftFinder() {
   const { allProducts } = useStore();
@@ -17,6 +18,7 @@ export default function GiftFinder() {
 
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [tryOnProduct, setTryOnProduct] = useState(null);
 
   function handlePhotoChange(e) {
     const file = e.target.files && e.target.files[0];
@@ -159,13 +161,29 @@ export default function GiftFinder() {
             ) : (
               <div className="product-grid">
                 {picks.map((p) => (
-                  <ProductCard key={p.id} product={p} />
+                  <div key={p.id}>
+                    <ProductCard product={p} />
+                    {photoUrl ? (
+                      <button
+                        type="button"
+                        className="pay-ghost-btn"
+                        style={{ width: '100%' }}
+                        onClick={() => setTryOnProduct(p)}
+                      >
+                        👗 Примерить на фото
+                      </button>
+                    ) : null}
+                  </div>
                 ))}
               </div>
             )}
           </section>
         </>
       )}
+
+      {tryOnProduct ? (
+        <TryOnModal photoUrl={photoUrl} product={tryOnProduct} onClose={() => setTryOnProduct(null)} />
+      ) : null}
     </main>
   );
 }
