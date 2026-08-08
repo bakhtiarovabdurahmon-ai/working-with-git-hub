@@ -4,13 +4,13 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
-// Only admins can see the full account list (used by the admin panel).
-router.get('/', requireAuth, requireRole('admin'), async (req, res) => {
+// Admin panel is shared by admin and superadmin — both can see the list.
+router.get('/', requireAuth, requireRole('admin', 'superadmin'), async (req, res) => {
   const users = await User.find({}).sort({ email: 1 });
   res.json(users.map((u) => u.toJSON()));
 });
 
-router.patch('/:email', requireAuth, requireRole('admin'), async (req, res) => {
+router.patch('/:email', requireAuth, requireRole('admin', 'superadmin'), async (req, res) => {
   const email = decodeURIComponent(req.params.email).toLowerCase();
   const { role } = req.body;
   if (!['customer', 'seller', 'admin'].includes(role)) {
@@ -19,8 +19,28 @@ router.patch('/:email', requireAuth, requireRole('admin'), async (req, res) => {
   if (email === req.user.email) {
     return res.status(400).json({ error: 'Нельзя изменить собственную роль' });
   }
-  const user = await User.findOneAndUpdate({ email }, { role }, { new: true });
-  if (!user) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (role === 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Назначать администраторов может только супер админ' });
+  }
+  const target = await User.findOne({ email });
+  if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (target.role === 'admin' && req.user.role !== 'superadmin') {
+    return res.status(403).json({ error: 'Изменять роль администратора может только супер админ' });
+  }
+  target.role = role;
+  await target.save();
+  res.json(target.toJSON());
+});
+
+// Superadmin promotes someone to admin by their ID code instead of hunting
+// them down in the table.
+router.post('/promote-by-code', requireAuth, requireRole('superadmin'), async (req, res) => {
+  const code = String(req.body.code || '').trim();
+  if (!code) return res.status(400).json({ error: 'Укажите ID-код' });
+  const user = await User.findOne({ code });
+  if (!user) return res.status(404).json({ error: 'Пользователь с таким ID не найден' });
+  user.role = 'admin';
+  await user.save();
   res.json(user.toJSON());
 });
 

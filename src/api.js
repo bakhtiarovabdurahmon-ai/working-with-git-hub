@@ -55,6 +55,7 @@ export const api = {
   getUsers: () => request('/users'),
   setUserRole: (email, role) =>
     request(`/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
+  promoteByCode: (code) => request('/users/promote-by-code', { method: 'POST', body: JSON.stringify({ code }) }),
   getProducts: () => request('/products'),
   createProduct: (product) => request('/products', { method: 'POST', body: JSON.stringify(product) }),
   deleteProduct: (id) => request(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),

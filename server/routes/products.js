@@ -9,7 +9,7 @@ router.get('/', async (req, res) => {
   res.json(products.map((p) => p.toJSON()));
 });
 
-router.post('/', requireAuth, requireRole('seller', 'admin'), async (req, res) => {
+router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
   try {
     const priceNum = Number(req.body.price);
     const discountNum = Number(req.body.discount) || 0;
@@ -32,10 +32,11 @@ router.post('/', requireAuth, requireRole('seller', 'admin'), async (req, res) =
   }
 });
 
-router.delete('/:id', requireAuth, requireRole('seller', 'admin'), async (req, res) => {
+router.delete('/:id', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) return res.status(404).json({ error: 'Товар не найден' });
-  if (req.user.role !== 'admin' && product.sellerEmail !== req.user.email) {
+  const isStaff = req.user.role === 'admin' || req.user.role === 'superadmin';
+  if (!isStaff && product.sellerEmail !== req.user.email) {
     return res.status(403).json({ error: 'Можно удалять только свои товары' });
   }
   await product.deleteOne();

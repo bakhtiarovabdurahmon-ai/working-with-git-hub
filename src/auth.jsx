@@ -13,6 +13,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { api, checkServer, setAuthToken } from './api.js';
+import { generateCode } from './codes.js';
 
 const USERS_KEY = 'wb_clone_users';
 const SESSION_KEY = 'wb_clone_session';
@@ -31,6 +32,7 @@ function writeLocalUsers(users) {
 }
 
 export const ROLE_LABELS = {
+  superadmin: 'Супер администратор',
   admin: 'Администратор',
   seller: 'Продавец',
   customer: 'Покупатель',
@@ -105,7 +107,7 @@ export function AuthProvider({ children }) {
 
   const verifyCode = useCallback(async (email, code) => {
     const key = email.trim().toLowerCase();
-    const { user, token } = await api.verifyCode(key, code);
+    const { user, token, isNew } = await api.verifyCode(key, code);
     setAuthToken(token);
     localStorage.setItem(TOKEN_KEY, token);
     setHasToken(true);
@@ -113,7 +115,7 @@ export function AuthProvider({ children }) {
     setUsers((prev) => ({ ...prev, [key]: user }));
     setSessionEmail(key);
     localStorage.setItem(SESSION_KEY, key);
-    return user;
+    return { user, isNew };
   }, []);
 
   // Локальный режим (сервер недоступен): обычная пара email+пароль в localStorage.
@@ -123,7 +125,17 @@ export function AuthProvider({ children }) {
       if (!key || !password) throw new Error('Заполните email и пароль');
       if (users[key]) throw new Error('Такой email уже зарегистрирован');
       const isFirstUser = Object.keys(users).length === 0;
-      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'admin' : 'customer' };
+      // Первый зарегистрированный — единственный супер админ, без ID-кода.
+      // Всем остальным — уникальный код (без цифры 6), по которому супер
+      // админ сможет назначить их администратором.
+      let code = null;
+      if (!isFirstUser) {
+        const taken = new Set(Object.values(users).map((u) => u.code).filter(Boolean));
+        do {
+          code = generateCode();
+        } while (taken.has(code));
+      }
+      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'superadmin' : 'customer', code };
       const next = { ...users, [key]: user };
       setUsers(next);
       writeLocalUsers(next);
@@ -165,11 +177,39 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      if (!users[key]) return;
-      const updated = { ...users[key], role };
+      const target = users[key];
+      if (!target) return;
+      const caller = sessionEmail ? users[sessionEmail] : null;
+      if (target.role === 'superadmin') throw new Error('Нельзя изменить роль супер админа');
+      if ((role === 'admin' || target.role === 'admin') && caller?.role !== 'superadmin') {
+        throw new Error('Назначать и изменять администраторов может только супер админ');
+      }
+      const updated = { ...target, role };
       const next = { ...users, [key]: updated };
       setUsers(next);
       writeLocalUsers(next);
+    },
+    [users, serverMode, sessionEmail]
+  );
+
+  const promoteByCode = useCallback(
+    async (code) => {
+      const trimmed = String(code).trim();
+      if (!trimmed) throw new Error('Укажите ID-код');
+
+      if (serverMode) {
+        const updated = await api.promoteByCode(trimmed);
+        setUsers((prev) => ({ ...prev, [updated.email]: updated }));
+        return updated;
+      }
+
+      const target = Object.values(users).find((u) => u.code === trimmed);
+      if (!target) throw new Error('Пользователь с таким ID не найден');
+      const updated = { ...target, role: 'admin' };
+      const next = { ...users, [target.email]: updated };
+      setUsers(next);
+      writeLocalUsers(next);
+      return updated;
     },
     [users, serverMode]
   );
@@ -186,11 +226,13 @@ export function AuthProvider({ children }) {
       loginLocal,
       logout,
       setRole,
-      isAdmin: currentUser?.role === 'admin',
-      isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin',
+      promoteByCode,
+      isAdmin: currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
+      isSuperadmin: currentUser?.role === 'superadmin',
+      isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
       serverMode,
     }),
-    [users, currentUser, requestCode, verifyCode, registerLocal, loginLocal, logout, setRole, serverMode]
+    [users, currentUser, requestCode, verifyCode, registerLocal, loginLocal, logout, setRole, promoteByCode, serverMode]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

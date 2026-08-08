@@ -5,6 +5,7 @@ import VerificationCode from '../models/VerificationCode.js';
 import Session from '../models/Session.js';
 import { sendVerificationEmail } from '../lib/mailer.js';
 import { requireAuth } from '../middleware/auth.js';
+import { generateUniqueCode } from '../lib/codes.js';
 
 const router = Router();
 const CODE_TTL_MS = 10 * 60 * 1000;
@@ -56,13 +57,18 @@ router.post('/verify-code', async (req, res) => {
     }
 
     let user = await User.findOne({ email: key });
+    let isNew = false;
     if (!user) {
+      isNew = true;
       const isFirstUser = (await User.countDocuments({})) === 0;
       try {
         user = await User.create({
           name: record.name || key,
           email: key,
-          role: isFirstUser ? 'admin' : 'customer',
+          // The very first account is the one and only superadmin; everyone
+          // else gets an ID code the superadmin can use to promote them.
+          role: isFirstUser ? 'superadmin' : 'customer',
+          code: isFirstUser ? undefined : await generateUniqueCode(User),
         });
       } catch (err) {
         // Another concurrent verify-code for the same brand-new email won
@@ -77,7 +83,7 @@ router.post('/verify-code', async (req, res) => {
     const token = crypto.randomBytes(32).toString('hex');
     await Session.create({ token, email: key, expiresAt: new Date(Date.now() + SESSION_TTL_MS) });
 
-    res.json({ user: user.toJSON(), token });
+    res.json({ user: user.toJSON(), token, isNew });
   } catch (err) {
     res.status(500).json({ error: 'Не удалось подтвердить код' });
   }

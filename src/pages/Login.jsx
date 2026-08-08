@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../auth.jsx';
+import { useAuth, ROLE_LABELS } from '../auth.jsx';
 
 export default function Login() {
   const { requestCode, verifyCode, registerLocal, loginLocal, currentUser, serverMode } = useAuth();
@@ -25,7 +25,11 @@ export default function Login() {
       <main className="container">
         <div className="empty-state">
           <h2>Вы уже вошли как {currentUser.name}</h2>
-          <p>Роль: {currentUser.role}</p>
+          <p>
+            Роль: {ROLE_LABELS[currentUser.role] || currentUser.role}
+            {currentUser.code ? ` · ID ${currentUser.code}` : ''}
+          </p>
+          {notice ? <div className="form-notice">{notice}</div> : null}
           <button className="btn btn-primary" type="button" onClick={() => navigate('/')}>На главную</button>
         </div>
       </main>
@@ -52,8 +56,15 @@ export default function Login() {
     setError(null);
     setSubmitting(true);
     try {
-      await verifyCode(email, code);
-      navigate('/');
+      const { user, isNew } = await verifyCode(email, code);
+      if (isNew && user.role === 'superadmin') {
+        setNotice('Вы первый пользователь — вам выдана роль супер администратора.');
+      } else if (isNew && user.code) {
+        setNotice(`Ваш ID-код: ${user.code}. Сообщите его супер админу, чтобы он назначил вас администратором.`);
+      } else {
+        // Возвращающийся пользователь — показывать нечего, идём сразу дальше.
+        navigate('/');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -68,11 +79,20 @@ export default function Login() {
     try {
       if (localMode === 'register') {
         const user = registerLocal(name, email, password);
-        setNotice(user.role === 'admin' ? 'Вы первый пользователь — вам выдана роль администратора.' : null);
+        if (user.role === 'superadmin') {
+          setNotice('Вы первый пользователь — вам выдана роль супер администратора.');
+        } else if (user.code) {
+          setNotice(`Ваш ID-код: ${user.code}. Сообщите его супер админу, чтобы он назначил вас администратором.`);
+        } else {
+          navigate('/');
+        }
+        // Остаёмся на странице, пока не покажем уведомление выше — если
+        // сразу перейти на главную, пользователь никогда не увидит свой
+        // ID-код.
       } else {
         loginLocal(email, password);
+        navigate('/');
       }
-      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {

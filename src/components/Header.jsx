@@ -65,7 +65,11 @@ export default function Header() {
         {currentUser ? (
           <>
             <span className="user-bar-name">
-              {currentUser.name} <span className="user-bar-role">· {ROLE_LABELS[currentUser.role]}</span>
+              {currentUser.name}{' '}
+              <span className="user-bar-role">
+                · {ROLE_LABELS[currentUser.role]}
+                {currentUser.code ? ` · ID ${currentUser.code}` : ''}
+              </span>
             </span>
             {isSeller ? (
               <button type="button" className="user-bar-btn user-bar-btn-primary" onClick={() => setAddOpen(true)}>
