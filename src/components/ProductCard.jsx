@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useStore, formatPrice } from '../store.jsx';
 import Stars from './Stars.jsx';
 
-export default function ProductCard({ product: p }) {
+export default function ProductCard({ product: p, onTryOn }) {
   const { isFavorite, toggleFavorite, addToCart } = useStore();
   const [added, setAdded] = useState(false);
   const fav = isFavorite(p.id);
@@ -54,6 +54,19 @@ export default function ProductCard({ product: p }) {
         >
           {added ? 'Добавлено ✓' : 'В корзину'}
         </button>
+        {onTryOn ? (
+          <button
+            type="button"
+            className="btn btn-outline btn-add-cart"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTryOn(p);
+            }}
+          >
+            👗 Примерить на фото
+          </button>
+        ) : null}
       </div>
     </div>
   );

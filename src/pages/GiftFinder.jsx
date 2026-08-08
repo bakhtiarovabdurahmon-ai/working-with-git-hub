@@ -161,19 +161,7 @@ export default function GiftFinder() {
             ) : (
               <div className="product-grid">
                 {picks.map((p) => (
-                  <div key={p.id}>
-                    <ProductCard product={p} />
-                    {photoUrl ? (
-                      <button
-                        type="button"
-                        className="pay-ghost-btn"
-                        style={{ width: '100%' }}
-                        onClick={() => setTryOnProduct(p)}
-                      >
-                        👗 Примерить на фото
-                      </button>
-                    ) : null}
-                  </div>
+                  <ProductCard key={p.id} product={p} onTryOn={photoUrl ? setTryOnProduct : undefined} />
                 ))}
               </div>
             )}
