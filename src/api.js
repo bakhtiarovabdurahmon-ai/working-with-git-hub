@@ -19,9 +19,19 @@ export function checkServer() {
   return availabilityPromise;
 }
 
+// Session token from /auth/verify-code, attached to every request so the
+// backend can authorize role/product changes — see server/middleware/auth.js.
+let authToken = null;
+
+export function setAuthToken(token) {
+  authToken = token;
+}
+
 async function request(path, options = {}) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (authToken) headers.Authorization = 'Bearer ' + authToken;
   const res = await fetch(API_URL + path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     ...options,
   });
   if (!res.ok) {
@@ -41,6 +51,7 @@ async function request(path, options = {}) {
 export const api = {
   requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: JSON.stringify({ email, name }) }),
   verifyCode: (email, code) => request('/auth/verify-code', { method: 'POST', body: JSON.stringify({ email, code }) }),
+  me: () => request('/auth/me'),
   getUsers: () => request('/users'),
   setUserRole: (email, role) =>
     request(`/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify({ role }) }),

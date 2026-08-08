@@ -5,6 +5,7 @@ const verificationCodeSchema = new mongoose.Schema({
   code: { type: String, required: true },
   name: { type: String, default: '' },
   expiresAt: { type: Date, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
 // TTL index: MongoDB automatically deletes the document once expiresAt passes.

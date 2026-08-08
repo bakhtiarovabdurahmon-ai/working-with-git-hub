@@ -12,10 +12,11 @@
 // заметно более слабый режим и годится только как демо.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, checkServer } from './api.js';
+import { api, checkServer, setAuthToken } from './api.js';
 
 const USERS_KEY = 'wb_clone_users';
 const SESSION_KEY = 'wb_clone_session';
+const TOKEN_KEY = 'wb_clone_token';
 
 function readLocalUsers() {
   try {
@@ -41,29 +42,59 @@ export function AuthProvider({ children }) {
   const [users, setUsers] = useState({});
   const [serverMode, setServerMode] = useState(null); // null = ещё проверяем
   const [sessionEmail, setSessionEmail] = useState(() => localStorage.getItem(SESSION_KEY) || null);
+  const [serverUser, setServerUser] = useState(null);
+  const [hasToken, setHasToken] = useState(() => {
+    const stored = localStorage.getItem(TOKEN_KEY);
+    if (stored) setAuthToken(stored);
+    return !!stored;
+  });
 
   useEffect(() => {
     let cancelled = false;
     checkServer().then(async (ok) => {
       if (cancelled) return;
       setServerMode(ok);
-      if (ok) {
-        try {
-          const list = await api.getUsers();
-          const map = {};
-          list.forEach((u) => { map[u.email] = u; });
-          if (!cancelled) setUsers(map);
-        } catch (e) {
-          if (!cancelled) setUsers(readLocalUsers());
-        }
-      } else {
+      if (!ok) {
         setUsers(readLocalUsers());
+        return;
+      }
+      if (hasToken) {
+        try {
+          const me = await api.me();
+          if (!cancelled) setServerUser(me);
+        } catch (e) {
+          // Stored token is invalid/expired — drop it, back to logged out.
+          setAuthToken(null);
+          localStorage.removeItem(TOKEN_KEY);
+          if (!cancelled) setHasToken(false);
+        }
       }
     });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Full account list is only needed for the admin panel — fetch it lazily,
+  // once we know the current user really is an admin (only admins are
+  // allowed to call GET /api/users, see server/routes/users.js).
+  useEffect(() => {
+    if (!serverMode || serverUser?.role !== 'admin') return;
+    let cancelled = false;
+    api
+      .getUsers()
+      .then((list) => {
+        if (cancelled) return;
+        const map = {};
+        list.forEach((u) => { map[u.email] = u; });
+        setUsers(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [serverMode, serverUser]);
 
   // Серверный режим: вход по коду из письма (без пароля).
   const requestCode = useCallback(async (name, email) => {
@@ -74,7 +105,11 @@ export function AuthProvider({ children }) {
 
   const verifyCode = useCallback(async (email, code) => {
     const key = email.trim().toLowerCase();
-    const user = await api.verifyCode(key, code);
+    const { user, token } = await api.verifyCode(key, code);
+    setAuthToken(token);
+    localStorage.setItem(TOKEN_KEY, token);
+    setHasToken(true);
+    setServerUser(user);
     setUsers((prev) => ({ ...prev, [key]: user }));
     setSessionEmail(key);
     localStorage.setItem(SESSION_KEY, key);
@@ -114,12 +149,15 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => {
     setSessionEmail(null);
     localStorage.removeItem(SESSION_KEY);
+    setServerUser(null);
+    setAuthToken(null);
+    localStorage.removeItem(TOKEN_KEY);
+    setHasToken(false);
   }, []);
 
   const setRole = useCallback(
     async (email, role) => {
       const key = email.trim().toLowerCase();
-      if (!users[key]) return;
 
       if (serverMode) {
         const updated = await api.setUserRole(key, role);
@@ -127,6 +165,7 @@ export function AuthProvider({ children }) {
         return;
       }
 
+      if (!users[key]) return;
       const updated = { ...users[key], role };
       const next = { ...users, [key]: updated };
       setUsers(next);
@@ -135,7 +174,7 @@ export function AuthProvider({ children }) {
     [users, serverMode]
   );
 
-  const currentUser = sessionEmail ? users[sessionEmail] || null : null;
+  const currentUser = serverMode ? serverUser : sessionEmail ? users[sessionEmail] || null : null;
 
   const value = useMemo(
     () => ({

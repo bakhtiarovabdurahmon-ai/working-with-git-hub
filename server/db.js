@@ -10,7 +10,12 @@ const cached = globalThis.__mongooseCache || (globalThis.__mongooseCache = { con
 export async function connectDB() {
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
+    cached.promise = mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 }).catch((err) => {
+      // Let the next call retry instead of replaying this same rejection
+      // forever on a warm serverless instance.
+      cached.promise = null;
+      throw err;
+    });
   }
   cached.conn = await cached.promise;
   return cached.conn;

@@ -15,11 +15,13 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // seller product photos are inlined as data URLs
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
-
-// Every other /api route needs the database — connect lazily (and only
-// once per warm serverless instance, see db.js) rather than blocking
-// module load, since that also has to work in a serverless environment.
+// Every /api route (including health) needs the database — connect lazily
+// (and only once per warm serverless instance, see db.js) rather than
+// blocking module load, since that also has to work in a serverless
+// environment. /api/health deliberately goes through this too: the
+// frontend's checkServer() uses it to decide whether real backend storage
+// is usable, so it must reflect actual DB reachability, not just that the
+// process is running.
 app.use('/api', async (req, res, next) => {
   try {
     await connectDB();
@@ -28,6 +30,8 @@ app.use('/api', async (req, res, next) => {
     res.status(503).json({ error: 'База данных недоступна: ' + err.message });
   }
 });
+
+app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
