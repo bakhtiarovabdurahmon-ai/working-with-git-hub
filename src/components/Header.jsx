@@ -42,6 +42,10 @@ export default function Header() {
           <button type="submit" aria-label="Найти">🔍</button>
         </form>
         <div className="header-actions">
+          <Link to="/gift" className="header-action">
+            <span className="header-action-icon">🎁</span>
+            <span className="header-action-label">Подарок</span>
+          </Link>
           <Link to="/favorites" className="header-action">
             <span className="header-action-icon">
               ♡<span className="badge" style={{ display: favoritesCount > 0 ? 'flex' : 'none' }}>{favoritesCount}</span>

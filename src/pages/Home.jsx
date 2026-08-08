@@ -15,6 +15,7 @@ export default function Home() {
           <h1>Мужская одежда со скидками до 70%</h1>
           <p>Футболки, рубашки, брюки, верхняя одежда, обувь и аксессуары — всё для мужского гардероба с быстрой доставкой.</p>
           <Link to="/catalog" className="btn">Перейти в каталог</Link>
+          <Link to="/gift" className="btn" style={{ marginLeft: 12 }}>🎁 Подобрать подарок</Link>
         </div>
         <div className="hero-emoji">👔</div>
       </section>
