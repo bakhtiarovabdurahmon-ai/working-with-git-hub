@@ -4,16 +4,37 @@
 // с платёжным провайдером/онлайн-кассой (54-ФЗ) — здесь этого нет и быть не может.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import QRCode from 'qrcode';
 import { formatPrice } from '../store.jsx';
 
-// Реальные реквизиты получателя. QR-код банка (Optima/ELQR) сюда не встроен:
-// у нас нет доступа к точным закодированным в нём данным (включая контрольную
-// сумму), а угадывать их нельзя — неверный QR отправит перевод в никуда.
-// Поэтому вместо картинки QR — реквизиты для перевода вручную.
+// Реальные реквизиты получателя.
+//
+// QR здесь кодирует просто номер телефона как текст (не банковский
+// платёжный код) — у нас нет точных данных, зашитых в фирменный QR банка
+// (включая контрольную сумму), а угадывать их нельзя: неверный QR отправит
+// перевод в никуда. Отсканировав этот QR, покупатель видит номер и переводит
+// вручную через своё банковское приложение — так же надёжно, просто удобнее.
 const DEMO_RECIPIENT = {
   phone: '559 610 059',
   name: 'АБДУЛЛА Т.',
 };
+
+function PhoneQr({ phone }) {
+  const [src, setSrc] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    QRCode.toDataURL('+996 ' + phone, { width: 200, margin: 1 }).then((url) => {
+      if (!cancelled) setSrc(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phone]);
+
+  if (!src) return <div className="qr-mock" />;
+  return <img src={src} alt="QR с номером телефона получателя" className="qr-real" />;
+}
 
 export default function PaymentModal({ items, cart, total, onClose, onDone }) {
   const [step, setStep] = useState('details');
@@ -75,7 +96,8 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
               <div className="pay-amount-label">Сумма к оплате</div>
               <div className="pay-amount-value">{formatPrice(total)}</div>
             </div>
-            <div className="qr-note">Переведите вручную через приложение банка (Optima Bank / любой банк с переводом по номеру) на реквизиты ниже</div>
+            <PhoneQr phone={DEMO_RECIPIENT.phone} />
+            <div className="qr-note">Отсканируйте QR, чтобы получить номер получателя, и переведите вручную через приложение банка (Optima Bank / любой банк с переводом по номеру)</div>
             <div className="pay-row">
               <div>
                 <div className="pay-row-k">Телефон получателя</div>
