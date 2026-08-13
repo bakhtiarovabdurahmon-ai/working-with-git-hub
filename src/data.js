@@ -2,7 +2,7 @@
 // Магазин специализируется только на мужской одежде
 
 export const CATEGORIES = [
-  { id: 'tshirts', title: 'Футболки и поло', icon: '👕' },
+  { id: 'tshirts', title: 'Футболки', icon: '👕' },
   { id: 'shirts', title: 'Рубашки', icon: '👔' },
   { id: 'pants', title: 'Брюки и джинсы', icon: '👖' },
   { id: 'outerwear', title: 'Верхняя одежда', icon: '🧥' },
@@ -17,11 +17,30 @@ function seededRandom(seed) {
   return x - Math.floor(x);
 }
 
+// Обычные размеры одежды: буквенные до XL, дальше без потолка на 2XL — до 20XL.
+function buildGeneralSizes() {
+  const sizes = ['XS', 'S', 'M', 'L', 'XL'];
+  for (let i = 2; i <= 20; i++) sizes.push(i + 'XL');
+  return sizes;
+}
+
+export const GENERAL_SIZES = buildGeneralSizes();
+// Брюки/джинсы/шорты — числовой размер (обхват талии, см).
+export const PANTS_SIZES = ['44', '46', '48', '50', '52', '54', '56', '58', '60', '62'];
+// Обувь — числовой размер (EU).
+export const SHOE_SIZES = ['39', '40', '41', '42', '43', '44', '45', '46'];
+
+export function sizesForCategory(category) {
+  if (category === 'pants') return PANTS_SIZES;
+  if (category === 'shoes') return SHOE_SIZES;
+  return GENERAL_SIZES;
+}
+
 function buildProducts() {
   const catalog = [
     { title: 'Футболка базовая', category: 'tshirts', price: 890, emoji: '👕', brand: 'BASIC' },
     { title: 'Футболка с принтом', category: 'tshirts', price: 1190, emoji: '👕', brand: 'URBAN' },
-    { title: 'Поло пике', category: 'tshirts', price: 1690, emoji: '👕', brand: 'CLASSIC' },
+    { title: 'Футболка пике', category: 'tshirts', price: 1690, emoji: '👕', brand: 'CLASSIC' },
     { title: 'Лонгслив хлопковый', category: 'tshirts', price: 1290, emoji: '👕', brand: 'BASIC' },
     { title: 'Рубашка офисная', category: 'shirts', price: 1990, emoji: '👔', brand: 'OFFICE' },
     { title: 'Рубашка в клетку', category: 'shirts', price: 2190, emoji: '👔', brand: 'CHECK' },
@@ -75,15 +94,13 @@ function buildProducts() {
       emoji: item.emoji,
       color: `hsl(${(seed * 47) % 360}, 70%, 92%)`,
       description: `${item.title} от бренда ${item.brand}. Качественные материалы, аккуратный пошив и продуманный крой. Отлично подойдёт на каждый день и для особых случаев. Уточняйте наличие размеров и цветов у продавца.`,
-      sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+      sizes: sizesForCategory(item.category),
       inStock: seededRandom(seed * 5) > 0.05,
     };
   });
 }
 
 export const PRODUCTS = buildProducts();
-
-export const SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
 export function getProductById(id) {
   return PRODUCTS.find((p) => p.id === id);

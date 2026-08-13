@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useStore, formatPrice } from '../store.jsx';
-import PaymentModal from '../components/PaymentModal.jsx';
+import { useOrders } from '../orders.jsx';
+import { useAuth } from '../auth.jsx';
 
 export default function Cart() {
   const { cart, setCartQty, removeFromCart, clearCart, getProduct } = useStore();
-  const [payOpen, setPayOpen] = useState(false);
+  const { createOrders } = useOrders();
+  const { currentUser } = useAuth();
+  const [choosing, setChoosing] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
   const ids = Object.keys(cart);
@@ -21,10 +26,40 @@ export default function Cart() {
   });
   const discount = totalOld - total;
 
-  function handlePaymentDone() {
-    clearCart();
-    setPayOpen(false);
-    setSuccess(true);
+  async function handlePlaceOrder(fulfillment) {
+    setError(null);
+    setPlacing(true);
+    try {
+      const orderItems = items.map((p) => ({
+        productId: p.id,
+        title: p.title,
+        price: p.price,
+        qty: cart[p.id],
+        sellerEmail: p.sellerEmail || null,
+      }));
+      await createOrders(orderItems, fulfillment);
+      clearCart();
+      setChoosing(false);
+      setSuccess(true);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPlacing(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <main className="container">
+        <h1>Корзина</h1>
+        <div className="empty-state">
+          <span className="empty-state-emoji">✅</span>
+          <h2>Заказ отправлен продавцу!</h2>
+          <p>Как только он подтвердит наличие товара, вы сможете оплатить заказ в разделе «Заказы».</p>
+          <Link className="btn btn-primary" to="/orders">К заказам</Link>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -89,21 +124,31 @@ export default function Cart() {
               <span>К оплате</span>
               <span>{formatPrice(total)}</span>
             </div>
-            <button className="btn btn-primary" id="checkout-btn" type="button" onClick={() => setPayOpen(true)}>
-              Оформить заказ
-            </button>
-            {success ? (
-              <div className="checkout-success" style={{ display: 'block' }}>
-                Заказ оформлен! Это демо-магазин, реальная оплата не выполнялась.
+
+            {!currentUser ? (
+              <>
+                <Link className="btn btn-primary" id="checkout-btn" to="/login">Войти, чтобы оформить заказ</Link>
+              </>
+            ) : !choosing ? (
+              <button className="btn btn-primary" id="checkout-btn" type="button" onClick={() => setChoosing(true)}>
+                Оформить заказ
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <p className="pay-sub">Как получить заказ?</p>
+                <button className="btn btn-primary" type="button" disabled={placing} onClick={() => handlePlaceOrder('delivery')}>
+                  🚚 Оформить доставку
+                </button>
+                <button className="btn btn-primary" type="button" disabled={placing} onClick={() => handlePlaceOrder('reserve')}>
+                  🏬 Забронировать
+                </button>
+                <button className="pay-ghost-btn" type="button" onClick={() => setChoosing(false)}>Отмена</button>
               </div>
-            ) : null}
+            )}
+            {error ? <div className="form-error">{error}</div> : null}
           </aside>
         ) : null}
       </div>
-
-      {payOpen ? (
-        <PaymentModal items={items} cart={cart} total={total} onClose={() => setPayOpen(false)} onDone={handlePaymentDone} />
-      ) : null}
     </main>
   );
 }
