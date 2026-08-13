@@ -40,7 +40,7 @@ function buildProducts() {
   const catalog = [
     { title: 'Футболка базовая', category: 'tshirts', price: 890, emoji: '👕', brand: 'BASIC' },
     { title: 'Футболка с принтом', category: 'tshirts', price: 1190, emoji: '👕', brand: 'URBAN' },
-    { title: 'Футболка пике', category: 'tshirts', price: 1690, emoji: '👕', brand: 'CLASSIC' },
+    { title: 'Футболка', category: 'tshirts', price: 1690, emoji: '👕', brand: 'CLASSIC' },
     { title: 'Лонгслив хлопковый', category: 'tshirts', price: 1290, emoji: '👕', brand: 'BASIC' },
     { title: 'Рубашка офисная', category: 'shirts', price: 1990, emoji: '👔', brand: 'OFFICE' },
     { title: 'Рубашка в клетку', category: 'shirts', price: 2190, emoji: '👔', brand: 'CHECK' },
