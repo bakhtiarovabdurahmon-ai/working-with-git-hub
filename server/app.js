@@ -7,6 +7,7 @@ import { connectDB } from './db.js';
 import authRoutes from './routes/auth.js';
 import usersRoutes from './routes/users.js';
 import productsRoutes from './routes/products.js';
+import ordersRoutes from './routes/orders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -36,6 +37,7 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/products', productsRoutes);
+app.use('/api/orders', ordersRoutes);
 
 // If the frontend has been built (npm run build), serve it from the same
 // service — used when running as one persistent process (local dev,

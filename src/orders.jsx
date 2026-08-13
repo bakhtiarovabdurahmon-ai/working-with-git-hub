@@ -1,0 +1,175 @@
+// Заказы: покупатель оформляет -> продавец подтверждает наличие -> покупатель
+// переводит деньги -> супер админ подтверждает перевод -> заказ выдан.
+//
+// Если backend доступен — заказы общие для всех (MongoDB, см. server/routes/orders.js).
+// Если нет — откатываемся на localStorage, как и другие данные в этом демо.
+
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { api, checkServer } from './api.js';
+import { useAuth } from './auth.jsx';
+
+const ORDERS_KEY = 'wb_clone_orders';
+
+function readOrders() {
+  try {
+    return JSON.parse(localStorage.getItem(ORDERS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeOrders(orders) {
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+}
+
+function genOrderNumber() {
+  return 'OP-' + Math.floor(100000 + Math.random() * 900000);
+}
+
+function isStaffRole(role) {
+  return role === 'admin' || role === 'superadmin';
+}
+
+const OrdersContext = createContext(null);
+
+export function OrdersProvider({ children }) {
+  const { currentUser } = useAuth();
+  const [myOrders, setMyOrders] = useState([]);
+  const [sellerOrders, setSellerOrders] = useState([]);
+  const [serverMode, setServerMode] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkServer().then((ok) => {
+      if (!cancelled) setServerMode(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refresh = useCallback(async () => {
+    if (!currentUser) {
+      setMyOrders([]);
+      setSellerOrders([]);
+      return;
+    }
+    if (serverMode) {
+      const data = await api.getMyOrders();
+      setMyOrders(data.asBuyer || []);
+      setSellerOrders(data.asSeller || []);
+      return;
+    }
+    const local = readOrders();
+    setMyOrders(local.filter((o) => o.buyerEmail === currentUser.email));
+    if (isStaffRole(currentUser.role)) {
+      setSellerOrders(local);
+    } else if (currentUser.role === 'seller') {
+      setSellerOrders(local.filter((o) => o.sellerEmail === currentUser.email));
+    } else {
+      setSellerOrders([]);
+    }
+  }, [serverMode, currentUser]);
+
+  useEffect(() => {
+    if (serverMode === null) return;
+    refresh().catch(() => {});
+  }, [serverMode, currentUser, refresh]);
+
+  const createOrders = useCallback(
+    async (items, fulfillment) => {
+      if (!currentUser) throw new Error('Нужен вход, чтобы оформить заказ');
+
+      if (serverMode) {
+        const created = await api.createOrders(items, fulfillment);
+        await refresh();
+        return created;
+      }
+
+      const groups = new Map();
+      items.forEach((it) => {
+        const key = it.sellerEmail || '__store__';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ productId: it.productId, title: it.title, price: it.price, qty: it.qty });
+      });
+
+      const now = new Date().toISOString();
+      const created = [...groups.entries()].map(([key, groupItems]) => ({
+        id: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        orderNumber: genOrderNumber(),
+        buyerEmail: currentUser.email,
+        buyerName: currentUser.name,
+        sellerEmail: key === '__store__' ? null : key,
+        items: groupItems,
+        total: groupItems.reduce((sum, it) => sum + it.price * it.qty, 0),
+        fulfillment,
+        status: 'pending_stock',
+        receiptFileName: null,
+        createdAt: now,
+        updatedAt: now,
+      }));
+
+      const next = [...readOrders(), ...created];
+      writeOrders(next);
+      await refresh();
+      return created;
+    },
+    [serverMode, currentUser, refresh]
+  );
+
+  const confirmStock = useCallback(
+    async (id, inStock) => {
+      if (serverMode) {
+        await api.confirmStock(id, inStock);
+        await refresh();
+        return;
+      }
+      const next = readOrders().map((o) =>
+        o.id === id ? { ...o, status: inStock ? 'awaiting_payment' : 'out_of_stock', updatedAt: new Date().toISOString() } : o
+      );
+      writeOrders(next);
+      await refresh();
+    },
+    [serverMode, refresh]
+  );
+
+  const markPaid = useCallback(
+    async (id, receiptFileName) => {
+      if (serverMode) {
+        await api.markOrderPaid(id, receiptFileName);
+        await refresh();
+        return;
+      }
+      const next = readOrders().map((o) =>
+        o.id === id ? { ...o, status: 'payment_review', receiptFileName, updatedAt: new Date().toISOString() } : o
+      );
+      writeOrders(next);
+      await refresh();
+    },
+    [serverMode, refresh]
+  );
+
+  const confirmPayment = useCallback(
+    async (id) => {
+      if (serverMode) {
+        await api.confirmOrderPayment(id);
+        await refresh();
+        return;
+      }
+      const next = readOrders().map((o) => (o.id === id ? { ...o, status: 'completed', updatedAt: new Date().toISOString() } : o));
+      writeOrders(next);
+      await refresh();
+    },
+    [serverMode, refresh]
+  );
+
+  const value = { myOrders, sellerOrders, createOrders, confirmStock, markPaid, confirmPayment, refresh, serverMode };
+
+  return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;
+}
+
+export function useOrders() {
+  const ctx = useContext(OrdersContext);
+  if (!ctx) throw new Error('useOrders must be used within OrdersProvider');
+  return ctx;
+}

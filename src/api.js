@@ -59,4 +59,9 @@ export const api = {
   getProducts: () => request('/products'),
   createProduct: (product) => request('/products', { method: 'POST', body: JSON.stringify(product) }),
   deleteProduct: (id) => request(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  createOrders: (items, fulfillment) => request('/orders', { method: 'POST', body: JSON.stringify({ items, fulfillment }) }),
+  getMyOrders: () => request('/orders/mine'),
+  confirmStock: (id, inStock) => request(`/orders/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ inStock }) }),
+  markOrderPaid: (id, receiptFileName) => request(`/orders/${id}/receipt`, { method: 'PATCH', body: JSON.stringify({ receiptFileName }) }),
+  confirmOrderPayment: (id) => request(`/orders/${id}/confirm-payment`, { method: 'PATCH' }),
 };

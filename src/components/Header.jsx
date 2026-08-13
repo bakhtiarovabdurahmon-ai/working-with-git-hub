@@ -76,6 +76,7 @@ export default function Header() {
                 + Добавить товар
               </button>
             ) : null}
+            <Link to="/orders" className="user-bar-btn">Заказы</Link>
             {isAdmin ? (
               <Link to="/admin" className="user-bar-btn">Админ-панель</Link>
             ) : null}

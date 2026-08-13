@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CATEGORIES, SIZES } from '../data.js';
+import { CATEGORIES, sizesForCategory } from '../data.js';
 import { useStore } from '../store.jsx';
 import { useAuth } from '../auth.jsx';
 
@@ -45,8 +45,15 @@ export default function AddProductModal({ onClose }) {
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const availableSizes = sizesForCategory(category);
+
   function toggleSize(s) {
     setSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  }
+
+  function handleCategoryChange(next) {
+    setCategory(next);
+    setSizes([]);
   }
 
   async function handleImageChange(e) {
@@ -125,7 +132,7 @@ export default function AddProductModal({ onClose }) {
 
             <div className="form-row">
               <label className="form-label">Категория</label>
-              <select className="form-input" value={category} onChange={(e) => setCategory(e.target.value)}>
+              <select className="form-input" value={category} onChange={(e) => handleCategoryChange(e.target.value)}>
                 {CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>{c.icon} {c.title}</option>
                 ))}
@@ -151,7 +158,7 @@ export default function AddProductModal({ onClose }) {
             <div className="form-row">
               <label className="form-label">Размеры</label>
               <div className="size-options">
-                {SIZES.map((s) => (
+                {availableSizes.map((s) => (
                   <button
                     key={s}
                     type="button"

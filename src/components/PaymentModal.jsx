@@ -1,9 +1,13 @@
-// Демо-поток оплаты: реквизиты + QR-заглушка → загрузка квитанции → имитация проверки → чек.
-// ВНИМАНИЕ: это симуляция для учебного проекта. Реальная приёмка платежей, сверка
-// квитанций и печать фискального чека требуют регистрации бизнеса и интеграции
-// с платёжным провайдером/онлайн-кассой (54-ФЗ) — здесь этого нет и быть не может.
+// Поток оплаты подтверждённого заказа: реквизиты → загрузка квитанции →
+// отметка "я перевёл(а)" → дальше супер админ вручную сверяет перевод и
+// подтверждает его в разделе «Заказы» (см. src/orders.jsx, PATCH
+// /api/orders/:id/confirm-payment на сервере). Проверка квитанции ниже —
+// это просто анимация ожидания перед постановкой заказа в очередь на
+// подтверждение, а не настоящая банковская сверка: реальная приёмка
+// платежей требует регистрации бизнеса и интеграции с платёжным
+// провайдером/онлайн-кассой (54-ФЗ) — здесь этого нет.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { formatPrice } from '../store.jsx';
 
@@ -36,26 +40,16 @@ function PhoneQr({ phone }) {
   return <img src={src} alt="QR с номером телефона получателя" className="qr-real" />;
 }
 
-export default function PaymentModal({ items, cart, total, onClose, onDone }) {
+export default function PaymentModal({ order, onClose, onPaid }) {
   const [step, setStep] = useState('details');
   const [receiptFileName, setReceiptFileName] = useState(null);
   const [toast, setToast] = useState(null);
-  const verifyTimer = useRef(null);
+  const [error, setError] = useState(null);
+  const [sending, setSending] = useState(false);
   const toastTimer = useRef(null);
 
-  const order = useMemo(
-    () => ({
-      id: 'OP-' + Math.floor(100000 + Math.random() * 900000),
-      date: new Date(),
-    }),
-    []
-  );
-
   useEffect(() => {
-    return () => {
-      clearTimeout(verifyTimer.current);
-      clearTimeout(toastTimer.current);
-    };
+    return () => clearTimeout(toastTimer.current);
   }, []);
 
   function showToast(msg) {
@@ -76,10 +70,19 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
     if (file) setReceiptFileName(file.name);
   }
 
-  function sendToVerification() {
+  async function sendToVerification() {
     setStep('verifying');
-    clearTimeout(verifyTimer.current);
-    verifyTimer.current = setTimeout(() => setStep('confirmed'), 1600);
+    setError(null);
+    setSending(true);
+    try {
+      await onPaid(receiptFileName);
+      setStep('confirmed');
+    } catch (err) {
+      setError(err.message);
+      setStep('upload');
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -89,12 +92,12 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
 
         {step === 'details' ? (
           <>
-            <div className="pay-eyebrow">Оплата заказа {order.id}</div>
+            <div className="pay-eyebrow">Оплата заказа {order.orderNumber}</div>
             <h2 className="pay-title">Переведите по реквизитам</h2>
-            <span className="pay-demo-flag">⚠ Демо-режим: проверка квитанции ниже имитируется — перевод по номеру телефона настоящий</span>
+            <span className="pay-demo-flag">⚠ Демо-режим: подтверждение перевода делает супер админ вручную — сам перевод по номеру телефона настоящий</span>
             <div className="pay-amount">
               <div className="pay-amount-label">Сумма к оплате</div>
-              <div className="pay-amount-value">{formatPrice(total)}</div>
+              <div className="pay-amount-value">{formatPrice(order.total)}</div>
             </div>
             <PhoneQr phone={DEMO_RECIPIENT.phone} />
             <div className="qr-note">Отсканируйте QR, чтобы получить номер получателя, и переведите вручную через приложение банка (Optima Bank / любой банк с переводом по номеру)</div>
@@ -119,30 +122,31 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
             >
               Я перевёл(а) — прикрепить квитанцию
             </button>
-            <button className="pay-ghost-btn" type="button" onClick={onClose}>Отменить</button>
+            <button className="pay-ghost-btn" type="button" onClick={onClose}>Закрыть</button>
           </>
         ) : null}
 
         {step === 'upload' ? (
           <>
-            <div className="pay-eyebrow">Оплата заказа {order.id}</div>
+            <div className="pay-eyebrow">Оплата заказа {order.orderNumber}</div>
             <h2 className="pay-title">Прикрепите квитанцию</h2>
             <p className="pay-sub">
-              Загрузите скриншот или PDF подтверждения перевода — система (в демо-режиме) проверит его автоматически.
+              Загрузите скриншот или PDF подтверждения перевода — заказ встанет в очередь на подтверждение супер админом.
             </p>
             <label className={`pay-upload-box ${receiptFileName ? 'has-file' : ''}`}>
               <span className="pay-upload-icon">📎</span>
               <span>{receiptFileName ? '✓ ' + receiptFileName : 'Нажмите, чтобы выбрать файл'}</span>
               <input type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFileChange} />
             </label>
+            {error ? <div className="form-error">{error}</div> : null}
             <button
               className="btn btn-primary btn-large"
               style={{ width: '100%' }}
               type="button"
-              disabled={!receiptFileName}
+              disabled={!receiptFileName || sending}
               onClick={sendToVerification}
             >
-              Отправить на проверку
+              {sending ? 'Отправляем…' : 'Отправить на проверку'}
             </button>
             <button className="pay-ghost-btn" type="button" onClick={() => setStep('details')}>
               Назад к реквизитам
@@ -153,31 +157,31 @@ export default function PaymentModal({ items, cart, total, onClose, onDone }) {
         {step === 'verifying' ? (
           <>
             <div className="pay-spinner" />
-            <div className="pay-status-text">Проверяем квитанцию…</div>
-            <div className="pay-status-sub">Демо-режим: реальная сверка с банком не выполняется</div>
+            <div className="pay-status-text">Отправляем квитанцию…</div>
+            <div className="pay-status-sub">Дальше супер админ вручную сверит перевод</div>
           </>
         ) : null}
 
         {step === 'confirmed' ? (
           <>
             <div className="pay-success-badge">✓</div>
-            <h2 className="pay-title" style={{ textAlign: 'center' }}>Квитанция подтверждена</h2>
+            <h2 className="pay-title" style={{ textAlign: 'center' }}>Квитанция отправлена</h2>
             <p className="pay-sub" style={{ textAlign: 'center' }}>
-              Чек сформирован и отправлен в мобильное приложение (демо-симуляция кассы).
+              Ждите подтверждения перевода — как только супер админ его проверит, заказ будет готов к выдаче. Статус можно
+              отслеживать в разделе «Заказы».
             </p>
             <div className="pay-receipt-box">
-              <div className="pay-receipt-line"><span>Заказ</span><span>{order.id}</span></div>
-              <div className="pay-receipt-line"><span>Дата</span><span>{order.date.toLocaleString('ru-RU')}</span></div>
+              <div className="pay-receipt-line"><span>Заказ</span><span>{order.orderNumber}</span></div>
               <div className="pay-receipt-line"><span>Файл квитанции</span><span>{receiptFileName || '—'}</span></div>
-              {items.map((p) => (
-                <div className="pay-receipt-line" key={p.id}>
-                  <span>{p.title} × {cart[p.id]}</span>
-                  <span>{formatPrice(p.price * cart[p.id])}</span>
+              {order.items.map((p, i) => (
+                <div className="pay-receipt-line" key={i}>
+                  <span>{p.title} × {p.qty}</span>
+                  <span>{formatPrice(p.price * p.qty)}</span>
                 </div>
               ))}
-              <div className="pay-receipt-line total"><span>Итого</span><span>{formatPrice(total)}</span></div>
+              <div className="pay-receipt-line total"><span>Итого</span><span>{formatPrice(order.total)}</span></div>
             </div>
-            <button className="btn btn-primary btn-large" style={{ width: '100%' }} type="button" onClick={onDone}>
+            <button className="btn btn-primary btn-large" style={{ width: '100%' }} type="button" onClick={onClose}>
               Готово
             </button>
           </>

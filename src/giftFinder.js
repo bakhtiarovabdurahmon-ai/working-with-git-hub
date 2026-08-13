@@ -1,14 +1,8 @@
 // Подбор размера и стиля для раздела «Подбор подарка».
-//
 // Размер по росту/весу — настоящий расчёт (базовый размер по росту,
-// скорректированный по ИМТ). Определение силуэта/стиля по фото —
-// честная демо-симуляция: реальный ИИ-анализ телосложения по фото
-// потребовал бы отдельного сервиса компьютерного зрения, которого у
-// этого магазина нет. Из фото мы берём только средний цвет — это можно
-// посчитать прямо в браузере — и используем его, чтобы предложить
-// подходящую цветовую гамму товаров.
+// скорректированный по ИМТ).
 
-const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const SIZE_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 export function sizeFromMeasurements(heightCm, weightKg) {
   const h = Number(heightCm);
@@ -40,18 +34,6 @@ export function styleFromAge(age) {
     return { label: 'Классический', categories: ['shirts', 'pants', 'outerwear', 'accessories'] };
   }
   return { label: 'Повседневно-деловой', categories: ['shirts', 'tshirts', 'pants', 'outerwear'] };
-}
-
-// Средний цвет фото — реальный расчёт по пикселям (уменьшенное до 1x1
-// изображение на canvas), просто грубый, а не "распознавание стиля".
-export function averageColorFromImage(imageEl) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1;
-  canvas.height = 1;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(imageEl, 0, 0, 1, 1);
-  const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
-  return `rgb(${r}, ${g}, ${b})`;
 }
 
 export function pickGiftProducts(allProducts, { size, categories }) {
