@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import Order from '../models/Order.js';
+import Product from '../models/Product.js';
 import User from '../models/User.js';
 import { requireAuth } from '../middleware/auth.js';
 import { sendOrderNotification } from '../lib/mailer.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 
 const router = Router();
+// Caps order-creation spam (each order emails the shop) — keyed per
+// authenticated user, applied after requireAuth so req.user is set.
+const createOrderLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 30, keyFn: (req) => req.user.email });
 
 function genOrderNumber() {
   return 'OP-' + Math.floor(100000 + Math.random() * 900000);
@@ -19,22 +24,34 @@ function isStaff(user) {
 // server/routes/products.js; если продавец не в магазине — группируем по
 // нему лично) и создаёт по одному заказу на магазин/продавца, чтобы каждый
 // видел только свои позиции.
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, createOrderLimiter, async (req, res) => {
   try {
     const { items, fulfillment } = req.body;
     if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Корзина пуста' });
     if (!['delivery', 'reserve'].includes(fulfillment)) return res.status(400).json({ error: 'Укажите способ получения' });
 
+    // Price, title, seller and shop all come from the Product record in the
+    // database, never from the client — otherwise a tampered request could
+    // set an arbitrary price or route the order to the wrong shop.
     const groups = new Map();
     for (const it of items) {
-      const price = Number(it.price);
       const qty = Number(it.qty);
-      if (!it.productId || !it.title || !Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0) {
+      if (!it.productId || !Number.isFinite(qty) || qty <= 0) {
         return res.status(400).json({ error: 'Некорректный товар в заказе' });
       }
-      const key = it.shopId || it.sellerEmail || '__store__';
-      if (!groups.has(key)) groups.set(key, { shopId: it.shopId || null, sellerEmail: it.sellerEmail || null, items: [] });
-      groups.get(key).items.push({ productId: it.productId, title: it.title, price, qty });
+      let product;
+      try {
+        product = await Product.findById(it.productId);
+      } catch (e) {
+        product = null;
+      }
+      if (!product) return res.status(400).json({ error: 'Товар в корзине больше не найден' });
+
+      const shopId = product.shopId ? String(product.shopId) : null;
+      const sellerEmail = product.sellerEmail || null;
+      const key = shopId || sellerEmail || '__store__';
+      if (!groups.has(key)) groups.set(key, { shopId, sellerEmail, items: [] });
+      groups.get(key).items.push({ productId: String(product._id), title: product.title, price: product.price, qty });
     }
 
     const created = [];

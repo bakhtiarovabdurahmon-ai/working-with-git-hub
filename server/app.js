@@ -14,8 +14,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
 
 const app = express();
+// Behind Vercel's (or any) reverse proxy, req.ip otherwise resolves to the
+// proxy's address instead of the real client — that would collapse every
+// visitor into one rate-limit bucket. Trusting the first hop reads the
+// real client IP from X-Forwarded-For.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '5mb' })); // seller product photos are inlined as data URLs
+
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Every /api route (including health) needs the database — connect lazily
 // (and only once per warm serverless instance, see db.js) rather than
@@ -40,6 +53,19 @@ app.use('/api/users', usersRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/shops', shopsRoutes);
+
+// Catches anything thrown/rejected in an /api handler (Express 5 forwards
+// async rejections here automatically) so a bad request — e.g. an
+// invalid-format id, which Mongoose rejects as a CastError before our own
+// validation gets a chance — always gets a clean JSON response instead of
+// Express's default HTML error page (which, without NODE_ENV=production
+// set correctly, would also leak the stack trace to the client).
+app.use('/api', (err, req, res, _next) => {
+  console.error(err);
+  if (err.name === 'CastError') return res.status(400).json({ error: 'Некорректный идентификатор' });
+  if (err.name === 'ValidationError') return res.status(400).json({ error: 'Некорректные данные' });
+  res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+});
 
 // If the frontend has been built (npm run build), serve it from the same
 // service — used when running as one persistent process (local dev,

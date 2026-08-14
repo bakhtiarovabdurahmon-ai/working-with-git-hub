@@ -24,6 +24,9 @@ router.patch('/:email', requireAuth, requireRole('admin', 'superadmin'), async (
   }
   const target = await User.findOne({ email });
   if (!target) return res.status(404).json({ error: 'Пользователь не найден' });
+  if (target.role === 'superadmin') {
+    return res.status(403).json({ error: 'Нельзя изменить роль супер админа' });
+  }
   if (target.role === 'admin' && req.user.role !== 'superadmin') {
     return res.status(403).json({ error: 'Изменять роль администратора может только супер админ' });
   }

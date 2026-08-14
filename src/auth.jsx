@@ -192,13 +192,18 @@ export function AuthProvider({ children }) {
   );
 
   const logout = useCallback(() => {
+    // Best-effort: revoke the session server-side too, so the token can't
+    // keep being used after the user has explicitly logged out.
+    if (serverMode && hasToken) {
+      api.logout().catch(() => {});
+    }
     setSessionEmail(null);
     localStorage.removeItem(SESSION_KEY);
     setServerUser(null);
     setAuthToken(null);
     localStorage.removeItem(TOKEN_KEY);
     setHasToken(false);
-  }, []);
+  }, [serverMode, hasToken]);
 
   const setRole = useCallback(
     async (email, role) => {

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { CATEGORIES } from '../data.js';
 import { useStore, formatPrice } from '../store.jsx';
 import { useAuth, ROLE_LABELS } from '../auth.jsx';
+import { useTheme } from '../theme.js';
 import AddProductModal from './AddProductModal.jsx';
 
 export default function Header() {
@@ -13,6 +14,7 @@ export default function Header() {
   const [addOpen, setAddOpen] = useState(false);
   const { cartCount, favoritesCount, allProducts } = useStore();
   const { currentUser, logout, isSeller, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const promoItems = allProducts.filter((p) => p.discount >= 20).slice(0, 12);
 
@@ -62,6 +64,15 @@ export default function Header() {
       </div>
 
       <div className="container user-bar">
+        <button
+          type="button"
+          className="user-bar-btn theme-toggle-btn"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
+          title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+        >
+          {theme === 'dark' ? '☀️ Светлая' : '🌙 Тёмная'}
+        </button>
         {currentUser ? (
           <>
             <span className="user-bar-name">

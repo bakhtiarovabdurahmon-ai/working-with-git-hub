@@ -6,6 +6,9 @@ const verificationCodeSchema = new mongoose.Schema({
   name: { type: String, default: '' },
   expiresAt: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
+  // Failed /verify-code attempts against this code — capped in the route
+  // handler so a code can't be brute-forced within its 10-minute lifetime.
+  attempts: { type: Number, default: 0 },
 });
 
 // TTL index: MongoDB automatically deletes the document once expiresAt passes.
