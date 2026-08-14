@@ -18,6 +18,7 @@ import { generateCode } from './codes.js';
 const USERS_KEY = 'wb_clone_users';
 const SESSION_KEY = 'wb_clone_session';
 const TOKEN_KEY = 'wb_clone_token';
+const SHOPS_KEY = 'wb_clone_shops';
 
 function readLocalUsers() {
   try {
@@ -31,6 +32,22 @@ function writeLocalUsers(users) {
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
+function readLocalShops() {
+  try {
+    return JSON.parse(localStorage.getItem(SHOPS_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function writeLocalShops(shops) {
+  localStorage.setItem(SHOPS_KEY, JSON.stringify(shops));
+}
+
+function isStaffRole(role) {
+  return role === 'admin' || role === 'superadmin';
+}
+
 export const ROLE_LABELS = {
   superadmin: 'Супер администратор',
   admin: 'Администратор',
@@ -42,6 +59,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [users, setUsers] = useState({});
+  const [shops, setShops] = useState(() => readLocalShops());
   const [serverMode, setServerMode] = useState(null); // null = ещё проверяем
   const [sessionEmail, setSessionEmail] = useState(() => localStorage.getItem(SESSION_KEY) || null);
   const [serverUser, setServerUser] = useState(null);
@@ -79,10 +97,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Full account list is only needed for the admin panel — fetch it lazily,
-  // once we know the current user really is an admin (only admins are
+  // once we know the current user really is staff (admin or superadmin are
   // allowed to call GET /api/users, see server/routes/users.js).
   useEffect(() => {
-    if (!serverMode || serverUser?.role !== 'admin') return;
+    if (!serverMode || !isStaffRole(serverUser?.role)) return;
     let cancelled = false;
     api
       .getUsers()
@@ -91,6 +109,21 @@ export function AuthProvider({ children }) {
         const map = {};
         list.forEach((u) => { map[u.email] = u; });
         setUsers(map);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [serverMode, serverUser]);
+
+  // Список магазинов — тоже только для admin/superadmin.
+  useEffect(() => {
+    if (!serverMode || !isStaffRole(serverUser?.role)) return;
+    let cancelled = false;
+    api
+      .getShops()
+      .then((list) => {
+        if (!cancelled) setShops(list);
       })
       .catch(() => {});
     return () => {
@@ -135,7 +168,7 @@ export function AuthProvider({ children }) {
           code = generateCode();
         } while (taken.has(code));
       }
-      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'superadmin' : 'customer', code };
+      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'superadmin' : 'customer', code, shopId: null };
       const next = { ...users, [key]: user };
       setUsers(next);
       writeLocalUsers(next);
@@ -214,11 +247,66 @@ export function AuthProvider({ children }) {
     [users, serverMode]
   );
 
+  const createShop = useCallback(
+    async (name) => {
+      const trimmed = String(name).trim();
+      if (!trimmed) throw new Error('Укажите название магазина');
+
+      if (serverMode) {
+        const shop = await api.createShop(trimmed);
+        setShops((prev) => [shop, ...prev]);
+        return shop;
+      }
+
+      const taken = new Set(shops.map((s) => s.code).filter(Boolean));
+      let code;
+      do {
+        code = generateCode();
+      } while (taken.has(code));
+      const shop = { id: 's' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: trimmed, code };
+      const next = [shop, ...shops];
+      setShops(next);
+      writeLocalShops(next);
+      return shop;
+    },
+    [serverMode, shops]
+  );
+
+  const assignToShop = useCallback(
+    async (userCode, shopCode) => {
+      const userCodeTrimmed = String(userCode).trim();
+      const shopCodeTrimmed = String(shopCode).trim();
+      if (!userCodeTrimmed || !shopCodeTrimmed) throw new Error('Укажите ID пользователя и код магазина');
+
+      if (serverMode) {
+        const updated = await api.assignToShop(userCodeTrimmed, shopCodeTrimmed);
+        setUsers((prev) => ({ ...prev, [updated.email]: updated }));
+        return updated;
+      }
+
+      const target = Object.values(users).find((u) => u.code === userCodeTrimmed);
+      if (!target) throw new Error('Пользователь с таким ID не найден');
+      if (target.role === 'admin' || target.role === 'superadmin') {
+        throw new Error('Администраторов нельзя привязать к магазину');
+      }
+      const shop = shops.find((s) => s.code === shopCodeTrimmed);
+      if (!shop) throw new Error('Магазин с таким кодом не найден');
+
+      const updated = { ...target, shopId: shop.id, role: target.role === 'customer' ? 'seller' : target.role };
+      const next = { ...users, [target.email]: updated };
+      setUsers(next);
+      writeLocalUsers(next);
+      return updated;
+    },
+    [users, shops, serverMode]
+  );
+
   const currentUser = serverMode ? serverUser : sessionEmail ? users[sessionEmail] || null : null;
 
   const value = useMemo(
     () => ({
       users,
+      shops,
       currentUser,
       requestCode,
       verifyCode,
@@ -227,12 +315,28 @@ export function AuthProvider({ children }) {
       logout,
       setRole,
       promoteByCode,
+      createShop,
+      assignToShop,
       isAdmin: currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
       isSuperadmin: currentUser?.role === 'superadmin',
       isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
       serverMode,
     }),
-    [users, currentUser, requestCode, verifyCode, registerLocal, loginLocal, logout, setRole, promoteByCode, serverMode]
+    [
+      users,
+      shops,
+      currentUser,
+      requestCode,
+      verifyCode,
+      registerLocal,
+      loginLocal,
+      logout,
+      setRole,
+      promoteByCode,
+      createShop,
+      assignToShop,
+      serverMode,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

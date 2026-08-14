@@ -14,10 +14,11 @@ function isStaff(user) {
   return user.role === 'admin' || user.role === 'superadmin';
 }
 
-// Покупатель отправляет корзину — сервер группирует товары по продавцу
-// (у каждого товара уже проставлен sellerEmail при добавлении, см.
-// server/routes/products.js) и создаёт по одному заказу на продавца, чтобы
-// каждый магазин видел только свои позиции.
+// Покупатель отправляет корзину — сервер группирует товары по магазину
+// (у каждого товара уже проставлен shopId при добавлении, см.
+// server/routes/products.js; если продавец не в магазине — группируем по
+// нему лично) и создаёт по одному заказу на магазин/продавца, чтобы каждый
+// видел только свои позиции.
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { items, fulfillment } = req.body;
@@ -31,31 +32,38 @@ router.post('/', requireAuth, async (req, res) => {
       if (!it.productId || !it.title || !Number.isFinite(price) || price <= 0 || !Number.isFinite(qty) || qty <= 0) {
         return res.status(400).json({ error: 'Некорректный товар в заказе' });
       }
-      const key = it.sellerEmail || '__store__';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push({ productId: it.productId, title: it.title, price, qty });
+      const key = it.shopId || it.sellerEmail || '__store__';
+      if (!groups.has(key)) groups.set(key, { shopId: it.shopId || null, sellerEmail: it.sellerEmail || null, items: [] });
+      groups.get(key).items.push({ productId: it.productId, title: it.title, price, qty });
     }
 
     const created = [];
-    for (const [key, groupItems] of groups) {
-      const sellerEmail = key === '__store__' ? null : key;
-      const total = groupItems.reduce((sum, it) => sum + it.price * it.qty, 0);
+    for (const group of groups.values()) {
+      const total = group.items.reduce((sum, it) => sum + it.price * it.qty, 0);
       const order = await Order.create({
         orderNumber: genOrderNumber(),
         buyerEmail: req.user.email,
         buyerName: req.user.name,
-        sellerEmail,
-        items: groupItems,
+        sellerEmail: group.sellerEmail,
+        shopId: group.shopId,
+        items: group.items,
         total,
         fulfillment,
       });
       created.push(order);
 
       // Лучшее старание, не блокирует создание заказа при сбое почты.
-      const notifyEmail = sellerEmail || (await User.findOne({ role: 'superadmin' }))?.email;
-      if (notifyEmail) {
-        sendOrderNotification(notifyEmail, order).catch(() => {});
+      let notifyEmails = [];
+      if (group.shopId) {
+        const members = await User.find({ shopId: group.shopId });
+        notifyEmails = members.map((m) => m.email);
+      } else if (group.sellerEmail) {
+        notifyEmails = [group.sellerEmail];
+      } else {
+        const superadmin = await User.findOne({ role: 'superadmin' });
+        if (superadmin) notifyEmails = [superadmin.email];
       }
+      notifyEmails.forEach((email) => sendOrderNotification(email, order).catch(() => {}));
     }
 
     res.status(201).json(created.map((o) => o.toJSON()));
@@ -65,15 +73,18 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Заказы текущего пользователя: как покупателя (asBuyer) и, если он
-// продавец/админ, как продавца (asSeller). Admin/superadmin как продавец
-// видят вообще все заказы — им нужно и подтверждать оплату, и подстраховывать
-// продавцов.
+// продавец/админ, как продавца (asSeller). Продавец в магазине видит все
+// заказы своего магазина (их могли добавить коллеги). Admin/superadmin как
+// продавец видят вообще все заказы — им нужно и подтверждать оплату, и
+// подстраховывать продавцов.
 router.get('/mine', requireAuth, async (req, res) => {
   const asBuyer = await Order.find({ buyerEmail: req.user.email }).sort({ createdAt: -1 });
 
   let asSeller = [];
   if (isStaff(req.user)) {
     asSeller = await Order.find({}).sort({ createdAt: -1 });
+  } else if (req.user.role === 'seller' && req.user.shopId) {
+    asSeller = await Order.find({ shopId: req.user.shopId }).sort({ createdAt: -1 });
   } else if (req.user.role === 'seller') {
     asSeller = await Order.find({ sellerEmail: req.user.email }).sort({ createdAt: -1 });
   }
@@ -84,13 +95,18 @@ router.get('/mine', requireAuth, async (req, res) => {
   });
 });
 
-// Продавец (или admin/superadmin) подтверждает, есть ли товар в наличии.
+function canManage(user, order) {
+  if (isStaff(user)) return true;
+  if (user.shopId && order.shopId && String(order.shopId) === String(user.shopId)) return true;
+  return order.sellerEmail === user.email;
+}
+
+// Продавец (или коллега по магазину, или admin/superadmin) подтверждает,
+// есть ли товар в наличии.
 router.patch('/:id/stock', requireAuth, async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ error: 'Заказ не найден' });
-  if (!isStaff(req.user) && order.sellerEmail !== req.user.email) {
-    return res.status(403).json({ error: 'Это не ваш заказ' });
-  }
+  if (!canManage(req.user, order)) return res.status(403).json({ error: 'Это не ваш заказ' });
   if (order.status !== 'pending_stock') return res.status(400).json({ error: 'Заказ уже обработан' });
 
   order.status = req.body.inStock ? 'awaiting_payment' : 'out_of_stock';

@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import usersRoutes from './routes/users.js';
 import productsRoutes from './routes/products.js';
 import ordersRoutes from './routes/orders.js';
+import shopsRoutes from './routes/shops.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -38,6 +39,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/orders', ordersRoutes);
+app.use('/api/shops', shopsRoutes);
 
 // If the frontend has been built (npm run build), serve it from the same
 // service — used when running as one persistent process (local dev,

@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema({
   // by code instead of hunting them down in the table. The superadmin
   // account itself has none — it's not something you promote into.
   code: { type: String, unique: true, sparse: true },
+  // Магазин, к которому привязан продавец — несколько сотрудников (2-3
+  // человека) могут состоять в одном магазине и вместе подтверждать заказы
+  // друг друга. null = не назначен ни в какой магазин.
+  shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
 });
 
 // Defense in depth: even if a route accidentally serializes the full

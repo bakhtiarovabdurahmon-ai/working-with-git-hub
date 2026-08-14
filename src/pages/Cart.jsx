@@ -36,6 +36,7 @@ export default function Cart() {
         price: p.price,
         qty: cart[p.id],
         sellerEmail: p.sellerEmail || null,
+        shopId: p.shopId || null,
       }));
       await createOrders(orderItems, fulfillment);
       clearCart();
