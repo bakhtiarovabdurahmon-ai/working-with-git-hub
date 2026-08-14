@@ -52,6 +52,7 @@ export const api = {
   requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: JSON.stringify({ email, name }) }),
   verifyCode: (email, code) => request('/auth/verify-code', { method: 'POST', body: JSON.stringify({ email, code }) }),
   me: () => request('/auth/me'),
+  logout: () => request('/auth/logout', { method: 'POST' }),
   getUsers: () => request('/users'),
   setUserRole: (email, role) =>
     request(`/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
