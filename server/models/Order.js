@@ -19,9 +19,12 @@ const orderSchema = new mongoose.Schema(
     orderNumber: { type: String, required: true, unique: true },
     buyerEmail: { type: String, required: true },
     buyerName: { type: String, default: '' },
-    // null = товар из общего каталога магазина (не добавлен конкретным продавцом) —
-    // такие заказы видят только admin/superadmin.
+    // Кто добавил товар (для истории) — null для товаров общего каталога.
     sellerEmail: { type: String, default: null },
+    // Магазин, которому направлен заказ — его видят все сотрудники магазина,
+    // а не только тот, кто добавил товар. null = общий каталог магазина
+    // (видят только admin/superadmin).
+    shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
     items: { type: [orderItemSchema], default: [] },
     total: { type: Number, required: true },
     fulfillment: { type: String, enum: ['delivery', 'reserve'], required: true },

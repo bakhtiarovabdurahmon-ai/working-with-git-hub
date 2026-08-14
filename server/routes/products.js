@@ -23,8 +23,10 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
       price: priceNum,
       discount: discountNum,
       qty: qtyNum,
-      // The seller is whoever is authenticated, never a client-supplied value.
+      // The seller (and their shop) is whoever is authenticated, never a
+      // client-supplied value.
       sellerEmail: req.user.email,
+      shopId: req.user.shopId || null,
     });
     res.status(201).json(product.toJSON());
   } catch (err) {
@@ -36,8 +38,9 @@ router.delete('/:id', requireAuth, requireRole('seller', 'admin', 'superadmin'),
   const product = await Product.findById(req.params.id);
   if (!product) return res.status(404).json({ error: 'Товар не найден' });
   const isStaff = req.user.role === 'admin' || req.user.role === 'superadmin';
-  if (!isStaff && product.sellerEmail !== req.user.email) {
-    return res.status(403).json({ error: 'Можно удалять только свои товары' });
+  const sameShop = req.user.shopId && product.shopId && String(product.shopId) === String(req.user.shopId);
+  if (!isStaff && !sameShop && product.sellerEmail !== req.user.email) {
+    return res.status(403).json({ error: 'Можно удалять только товары своего магазина' });
   }
   await product.deleteOne();
   res.status(204).end();

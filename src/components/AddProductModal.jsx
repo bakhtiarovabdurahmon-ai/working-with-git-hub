@@ -103,6 +103,7 @@ export default function AddProductModal({ onClose }) {
         qty: qtyNum,
         inStock: qtyNum > 0,
         sellerEmail: currentUser?.email || null,
+        shopId: currentUser?.shopId || null,
       });
       setDone(true);
       setTimeout(onClose, 900);

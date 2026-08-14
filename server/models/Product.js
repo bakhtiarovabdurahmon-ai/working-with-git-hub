@@ -18,6 +18,11 @@ const productSchema = new mongoose.Schema(
     qty: { type: Number, default: 0 },
     inStock: { type: Boolean, default: true },
     sellerEmail: { type: String, default: null },
+    // Магазин, к которому привязан товар (если продавец состоит в магазине) —
+    // заказы на такой товар видят все сотрудники магазина, а не только тот,
+    // кто его добавил. null = товар вне магазина (общий каталог или продавец
+    // без магазина).
+    shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
   },
   { timestamps: true }
 );

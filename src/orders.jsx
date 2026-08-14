@@ -64,6 +64,8 @@ export function OrdersProvider({ children }) {
     setMyOrders(local.filter((o) => o.buyerEmail === currentUser.email));
     if (isStaffRole(currentUser.role)) {
       setSellerOrders(local);
+    } else if (currentUser.role === 'seller' && currentUser.shopId) {
+      setSellerOrders(local.filter((o) => o.shopId === currentUser.shopId));
     } else if (currentUser.role === 'seller') {
       setSellerOrders(local.filter((o) => o.sellerEmail === currentUser.email));
     } else {
@@ -88,20 +90,21 @@ export function OrdersProvider({ children }) {
 
       const groups = new Map();
       items.forEach((it) => {
-        const key = it.sellerEmail || '__store__';
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push({ productId: it.productId, title: it.title, price: it.price, qty: it.qty });
+        const key = it.shopId || it.sellerEmail || '__store__';
+        if (!groups.has(key)) groups.set(key, { shopId: it.shopId || null, sellerEmail: it.sellerEmail || null, items: [] });
+        groups.get(key).items.push({ productId: it.productId, title: it.title, price: it.price, qty: it.qty });
       });
 
       const now = new Date().toISOString();
-      const created = [...groups.entries()].map(([key, groupItems]) => ({
+      const created = [...groups.values()].map((group) => ({
         id: 'o' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         orderNumber: genOrderNumber(),
         buyerEmail: currentUser.email,
         buyerName: currentUser.name,
-        sellerEmail: key === '__store__' ? null : key,
-        items: groupItems,
-        total: groupItems.reduce((sum, it) => sum + it.price * it.qty, 0),
+        sellerEmail: group.sellerEmail,
+        shopId: group.shopId,
+        items: group.items,
+        total: group.items.reduce((sum, it) => sum + it.price * it.qty, 0),
         fulfillment,
         status: 'pending_stock',
         receiptFileName: null,
