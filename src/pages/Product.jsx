@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getCategoryTitle } from '../data.js';
-import { useStore, formatPrice } from '../store.jsx';
+import { useStore, formatPrice, isOrderable } from '../store.jsx';
+import { useAuth } from '../auth.jsx';
 import Stars from '../components/Stars.jsx';
 import ProductCard from '../components/ProductCard.jsx';
 
 export default function Product() {
   const { id } = useParams();
-  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct } = useStore();
+  const navigate = useNavigate();
+  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct, removeProduct, serverMode } = useStore();
+  const { currentUser, isAdmin } = useAuth();
   const product = getProduct(id);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(product ? product.sizes[0] : null);
   const [addedText, setAddedText] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     if (product) document.title = product.title + ' — ОдеждаPRO';
@@ -35,11 +40,32 @@ export default function Product() {
 
   const fav = isFavorite(product.id);
   const related = allProducts.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const orderable = isOrderable(product, serverMode);
+  const canDelete =
+    !product.isDemo &&
+    currentUser &&
+    (isAdmin ||
+      currentUser.email === product.sellerEmail ||
+      (currentUser.shopId && product.shopId && String(currentUser.shopId) === String(product.shopId)));
 
   function handleAddToCart() {
+    if (!orderable) return;
     addToCart(product.id, qty);
     setAddedText('Добавлено в корзину ✓');
     setTimeout(() => setAddedText(null), 1500);
+  }
+
+  async function handleDelete() {
+    if (!window.confirm('Удалить этот товар безвозвратно?')) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await removeProduct(product.id);
+      navigate('/catalog');
+    } catch (err) {
+      setDeleteError(err.message);
+      setDeleting(false);
+    }
   }
 
   return (
@@ -77,6 +103,9 @@ export default function Product() {
           <div className={`stock-status ${product.inStock ? 'in-stock' : 'out-stock'}`}>
             {product.inStock ? '✓ В наличии' : 'Нет в наличии'}
           </div>
+          {!orderable ? (
+            <div className="stock-status out-stock">Витринный товар — недоступен для заказа</div>
+          ) : null}
           <div className="size-picker">
             <div className="size-picker-label">Размер:</div>
             <div className="size-options">
@@ -99,8 +128,8 @@ export default function Product() {
             <button type="button" onClick={() => setQty((v) => v + 1)}>+</button>
           </div>
           <div className="product-actions">
-            <button className="btn btn-primary btn-large" disabled={!product.inStock} onClick={handleAddToCart}>
-              {addedText || 'Добавить в корзину'}
+            <button className="btn btn-primary btn-large" disabled={!product.inStock || !orderable} onClick={handleAddToCart}>
+              {!orderable ? 'Демо-товар' : addedText || 'Добавить в корзину'}
             </button>
             <button
               className={`btn btn-outline btn-large fav-toggle-btn ${fav ? 'active' : ''}`}
@@ -109,7 +138,13 @@ export default function Product() {
             >
               {fav ? '♥ В избранном' : '♡ В избранное'}
             </button>
+            {canDelete ? (
+              <button className="btn btn-outline btn-large" type="button" disabled={deleting} onClick={handleDelete}>
+                {deleting ? 'Удаление…' : '🗑 Удалить товар'}
+              </button>
+            ) : null}
           </div>
+          {deleteError ? <div className="form-error">{deleteError}</div> : null}
           <div className="product-description">
             <h3>Описание</h3>
             <p>{product.description}</p>

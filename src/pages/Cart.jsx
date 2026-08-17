@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useStore, formatPrice } from '../store.jsx';
+import { useStore, formatPrice, isOrderable } from '../store.jsx';
 import { useOrders } from '../orders.jsx';
 import { useAuth } from '../auth.jsx';
 
 export default function Cart() {
-  const { cart, setCartQty, removeFromCart, clearCart, getProduct } = useStore();
+  const { cart, setCartQty, removeFromCart, clearCart, getProduct, serverMode } = useStore();
   const { createOrders } = useOrders();
   const { currentUser } = useAuth();
   const [choosing, setChoosing] = useState(false);
@@ -26,8 +26,14 @@ export default function Cart() {
   });
   const discount = totalOld - total;
 
+  const hasDemoItems = items.some((p) => !isOrderable(p, serverMode));
+
   async function handlePlaceOrder(fulfillment) {
     setError(null);
+    if (hasDemoItems) {
+      setError('В корзине есть витринный товар, который нельзя заказать по-настоящему — удалите его, чтобы оформить заказ.');
+      return;
+    }
     setPlacing(true);
     try {
       const orderItems = items.map((p) => ({
@@ -126,12 +132,15 @@ export default function Cart() {
               <span>{formatPrice(total)}</span>
             </div>
 
+            {hasDemoItems ? (
+              <div className="form-error">В корзине витринный товар, его нельзя заказать — удалите, чтобы продолжить.</div>
+            ) : null}
             {!currentUser ? (
               <>
                 <Link className="btn btn-primary" id="checkout-btn" to="/login">Войти, чтобы оформить заказ</Link>
               </>
             ) : !choosing ? (
-              <button className="btn btn-primary" id="checkout-btn" type="button" onClick={() => setChoosing(true)}>
+              <button className="btn btn-primary" id="checkout-btn" type="button" disabled={hasDemoItems} onClick={() => setChoosing(true)}>
                 Оформить заказ
               </button>
             ) : (
