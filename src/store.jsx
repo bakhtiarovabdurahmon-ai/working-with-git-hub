@@ -28,6 +28,14 @@ export function formatPrice(value) {
   return value.toLocaleString('ru-RU') + ' сом';
 }
 
+// Витринные товары (см. data.js) не привязаны ни к одному продавцу — их
+// некому подтвердить и отдать, поэтому оформить заказ на них по-настоящему
+// нельзя, как только подключён реальный backend. В офлайн-режиме (нет
+// сервера) все заказы и так идут только локально, ограничение не нужно.
+export function isOrderable(product, serverMode) {
+  return !(serverMode && product.isDemo);
+}
+
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
@@ -93,9 +101,14 @@ export function StoreProvider({ children }) {
 
   const getProduct = useCallback((id) => allProducts.find((p) => p.id === id), [allProducts]);
 
-  const addToCart = useCallback((productId, qty = 1) => {
-    setCart((prev) => ({ ...prev, [productId]: (prev[productId] || 0) + qty }));
-  }, []);
+  const addToCart = useCallback(
+    (productId, qty = 1) => {
+      const product = allProducts.find((p) => p.id === productId);
+      if (product && !isOrderable(product, serverMode)) return;
+      setCart((prev) => ({ ...prev, [productId]: (prev[productId] || 0) + qty }));
+    },
+    [allProducts, serverMode]
+  );
 
   const setCartQty = useCallback((productId, qty) => {
     setCart((prev) => {

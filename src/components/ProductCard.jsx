@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { useStore, formatPrice } from '../store.jsx';
+import { useStore, formatPrice, isOrderable } from '../store.jsx';
 import Stars from './Stars.jsx';
 
 export default function ProductCard({ product: p, onTryOn }) {
-  const { isFavorite, toggleFavorite, addToCart } = useStore();
+  const { isFavorite, toggleFavorite, addToCart, serverMode } = useStore();
   const [added, setAdded] = useState(false);
   const fav = isFavorite(p.id);
+  const orderable = isOrderable(p, serverMode);
 
   return (
     <div className="product-card">
@@ -46,13 +47,16 @@ export default function ProductCard({ product: p, onTryOn }) {
         <button
           type="button"
           className={`btn btn-primary btn-add-cart ${added ? 'added' : ''}`}
+          disabled={!orderable}
+          title={orderable ? undefined : 'Демо-товар, недоступен для заказа'}
           onClick={() => {
+            if (!orderable) return;
             addToCart(p.id, 1);
             setAdded(true);
             setTimeout(() => setAdded(false), 1200);
           }}
         >
-          {added ? 'Добавлено ✓' : 'В корзину'}
+          {!orderable ? 'Демо-товар' : added ? 'Добавлено ✓' : 'В корзину'}
         </button>
         {onTryOn ? (
           <button
