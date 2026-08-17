@@ -45,6 +45,8 @@ export default function Orders() {
   const [payOrder, setPayOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [cashbackInputs, setCashbackInputs] = useState({});
+  const [overlayDismissed, setOverlayDismissed] = useState(false);
 
   if (!currentUser) {
     return (
@@ -65,7 +67,7 @@ export default function Orders() {
     setActionError(null);
     setBusyId(id);
     try {
-      await confirmStock(id, inStock);
+      await confirmStock(id, inStock, inStock ? Number(cashbackInputs[id]) || 0 : 0);
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -89,10 +91,29 @@ export default function Orders() {
     await markPaid(payOrder.id, receiptFileName);
   }
 
+  const pendingOrder = myOrders.find((o) => o.status === 'pending_stock');
+  const showOverlay = !!pendingOrder && !overlayDismissed;
+
   return (
     <main className="container">
       <h1>Заказы</h1>
       {actionError ? <div className="form-error">{actionError}</div> : null}
+
+      {showOverlay ? (
+        <div className="stock-check-overlay" onClick={() => setOverlayDismissed(true)}>
+          <div className="stock-check-box" onClick={(e) => e.stopPropagation()}>
+            <div className="stock-check-dots">
+              <span /><span /><span /><span /><span />
+            </div>
+            <div className="stock-check-text">
+              Проверка товара на наличие — это может занять несколько минут
+            </div>
+            <button className="pay-ghost-btn" type="button" onClick={() => setOverlayDismissed(true)}>
+              Скрыть
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <section className="section">
         <div className="section-title"><span>Мои заказы ({myOrders.length})</span></div>
@@ -121,6 +142,15 @@ export default function Orders() {
               <OrderCard key={order.id} order={order}>
                 {order.status === 'pending_stock' ? (
                   <>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min="0"
+                      placeholder="Кешбек, сом"
+                      style={{ width: 130 }}
+                      value={cashbackInputs[order.id] || ''}
+                      onChange={(e) => setCashbackInputs((prev) => ({ ...prev, [order.id]: e.target.value }))}
+                    />
                     <button
                       className="btn btn-primary"
                       type="button"

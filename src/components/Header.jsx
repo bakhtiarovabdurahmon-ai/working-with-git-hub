@@ -33,6 +33,11 @@ export default function Header() {
         <button className="burger" type="button" onClick={() => setNavOpen((v) => !v)}>
           <span className="burger-icon">☰</span> Каталог
         </button>
+        {isSeller ? (
+          <Link to="/orders" className="burger" style={{ background: 'var(--accent)' }}>
+            👥 Клиенты
+          </Link>
+        ) : null}
         <form className="search-form" onSubmit={handleSubmit}>
           <input
             type="text"
@@ -82,6 +87,10 @@ export default function Header() {
                 {currentUser.code ? ` · ID ${currentUser.code}` : ''}
               </span>
             </span>
+            <Link to="/wheel" className="cashback-card">
+              <span className="cashback-card-icon">💳</span>
+              <span className="cashback-card-value">{currentUser.cashback || 0} кешбек</span>
+            </Link>
             {isSeller ? (
               <button type="button" className="user-bar-btn user-bar-btn-primary" onClick={() => setAddOpen(true)}>
                 + Добавить товар

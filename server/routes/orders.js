@@ -126,7 +126,18 @@ router.patch('/:id/stock', requireAuth, async (req, res) => {
   if (!canManage(req.user, order)) return res.status(403).json({ error: 'Это не ваш заказ' });
   if (order.status !== 'pending_stock') return res.status(400).json({ error: 'Заказ уже обработан' });
 
-  order.status = req.body.inStock ? 'awaiting_payment' : 'out_of_stock';
+  const inStock = !!req.body.inStock;
+  order.status = inStock ? 'awaiting_payment' : 'out_of_stock';
+
+  // Продавец может сразу начислить покупателю кешбек за этот заказ.
+  if (inStock) {
+    const cashbackNum = Number(req.body.cashback) || 0;
+    if (cashbackNum > 0) {
+      order.cashbackAwarded = cashbackNum;
+      await User.findOneAndUpdate({ email: order.buyerEmail }, { $inc: { cashback: cashbackNum } });
+    }
+  }
+
   await order.save();
   res.json(order.toJSON());
 });

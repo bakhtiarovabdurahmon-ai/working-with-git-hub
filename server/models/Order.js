@@ -34,6 +34,9 @@ const orderSchema = new mongoose.Schema(
       default: 'pending_stock',
     },
     receiptFileName: { type: String, default: null },
+    // Кешбек (в сомах), который продавец начислил покупателю при подтверждении
+    // наличия товара — 0, если ничего не начислялось.
+    cashbackAwarded: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
