@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import QRCode from 'qrcode';
 import { useAuth } from '../auth.jsx';
 import { useStore } from '../store.jsx';
 import { api } from '../api.js';
 
-const SPIN_COST = 1000;
+const SPIN_COST = 500;
 const PRIZES_KEY = 'wb_clone_wheel_prizes';
 const USERS_KEY = 'wb_clone_users';
 
@@ -32,6 +33,7 @@ export default function Wheel() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState(null);
+  const [redeemQr, setRedeemQr] = useState(null);
 
   const [label, setLabel] = useState('');
   const [type, setType] = useState('clothing');
@@ -107,6 +109,7 @@ export default function Wheel() {
     if (spinning) return;
     setError(null);
     setResult(null);
+    setRedeemQr(null);
     if (!currentUser) return setError('Нужен вход, чтобы крутить колесо');
     if ((currentUser.cashback || 0) < SPIN_COST) return setError(`Нужно минимум ${SPIN_COST} кешбека`);
     if (prizes.length === 0) return setError('Пока нет доступных призов');
@@ -115,11 +118,13 @@ export default function Wheel() {
     try {
       let prize;
       let newBalance;
+      let redemptionToken = null;
 
       if (serverMode) {
         const res = await api.spinWheel();
         prize = res.prize;
         newBalance = res.cashback;
+        redemptionToken = res.redemptionToken;
       } else {
         const pool = readLocalPrizes();
         prize = pool[Math.floor(Math.random() * pool.length)];
@@ -135,10 +140,20 @@ export default function Wheel() {
       const targetOffset = 360 - (idx * segmentAngle + segmentAngle / 2);
       setRotation((prev) => prev - (prev % 360) + 360 * 5 + targetOffset);
 
-      setTimeout(() => {
+      setTimeout(async () => {
         setResult(prize);
         setCashbackBalance(newBalance);
         setSpinning(false);
+        if (redemptionToken) {
+          const url = `${window.location.origin}/#/redeem/${redemptionToken}`;
+          try {
+            setRedeemQr(await QRCode.toDataURL(url, { width: 220, margin: 1 }));
+          } catch (e) {
+            setRedeemQr(null);
+          }
+        } else {
+          setRedeemQr(null);
+        }
       }, 4000);
     } catch (err) {
       setError(err.message);
@@ -209,6 +224,12 @@ export default function Wheel() {
               {result.type === 'cashback' ? <div className="pay-sub" style={{ marginTop: 6 }}>+{result.value} кешбека уже зачислено</div> : null}
               {result.type === 'discount' ? <div className="pay-sub" style={{ marginTop: 6 }}>Скидка {result.value}% — покажите продавцу</div> : null}
               {result.type === 'clothing' ? <div className="pay-sub" style={{ marginTop: 6 }}>Обратитесь к продавцу, чтобы забрать приз</div> : null}
+              {redeemQr ? (
+                <div style={{ marginTop: 14, textAlign: 'center' }}>
+                  <img src={redeemQr} alt="QR для выдачи приза" className="qr-real" />
+                  <div className="qr-note">Покажите этот QR продавцу — он отсканирует и выдаст приз</div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

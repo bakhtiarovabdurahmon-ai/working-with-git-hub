@@ -149,8 +149,17 @@ router.patch('/:id/receipt', requireAuth, async (req, res) => {
   if (order.buyerEmail !== req.user.email) return res.status(403).json({ error: 'Это не ваш заказ' });
   if (order.status !== 'awaiting_payment') return res.status(400).json({ error: 'Заказ не ожидает оплаты' });
 
+  const receiptImage = (req.body.receiptImage || '').toString();
+  if (!receiptImage.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Прикрепите фото квитанции' });
+  }
+  if (receiptImage.length > 4_000_000) {
+    return res.status(400).json({ error: 'Фото слишком большое, выберите поменьше' });
+  }
+
   order.status = 'payment_review';
   order.receiptFileName = (req.body.receiptFileName || '').toString().slice(0, 200);
+  order.receiptImage = receiptImage;
   await order.save();
   res.json(order.toJSON());
 });

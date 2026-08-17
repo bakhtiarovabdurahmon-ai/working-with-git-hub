@@ -94,6 +94,17 @@ export function OrdersProvider({ children }) {
     refresh().catch(() => {});
   }, [serverMode, currentUser, refresh]);
 
+  // Заказы общие для всех устройств (один купил с другого телефона, продавец
+  // подтвердил с другого) — опрашиваем сервер сами, чтобы список обновлялся
+  // без ручного обновления страницы.
+  useEffect(() => {
+    if (!serverMode || !currentUser) return;
+    const timer = setInterval(() => {
+      refresh().catch(() => {});
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [serverMode, currentUser, refresh]);
+
   const createOrders = useCallback(
     async (items, fulfillment) => {
       if (!currentUser) throw new Error('Нужен вход, чтобы оформить заказ');
@@ -166,14 +177,16 @@ export function OrdersProvider({ children }) {
   );
 
   const markPaid = useCallback(
-    async (id, receiptFileName) => {
+    async (id, receiptFileName, receiptImage) => {
       if (serverMode) {
-        await api.markOrderPaid(id, receiptFileName);
+        await api.markOrderPaid(id, receiptFileName, receiptImage);
         await refresh();
         return;
       }
       const next = readOrders().map((o) =>
-        o.id === id ? { ...o, status: 'payment_review', receiptFileName, updatedAt: new Date().toISOString() } : o
+        o.id === id
+          ? { ...o, status: 'payment_review', receiptFileName, receiptImage, updatedAt: new Date().toISOString() }
+          : o
       );
       writeOrders(next);
       await refresh();

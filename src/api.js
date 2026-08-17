@@ -63,7 +63,8 @@ export const api = {
   createOrders: (items, fulfillment) => request('/orders', { method: 'POST', body: JSON.stringify({ items, fulfillment }) }),
   getMyOrders: () => request('/orders/mine'),
   confirmStock: (id, inStock, cashback) => request(`/orders/${id}/stock`, { method: 'PATCH', body: JSON.stringify({ inStock, cashback }) }),
-  markOrderPaid: (id, receiptFileName) => request(`/orders/${id}/receipt`, { method: 'PATCH', body: JSON.stringify({ receiptFileName }) }),
+  markOrderPaid: (id, receiptFileName, receiptImage) =>
+    request(`/orders/${id}/receipt`, { method: 'PATCH', body: JSON.stringify({ receiptFileName, receiptImage }) }),
   confirmOrderPayment: (id) => request(`/orders/${id}/confirm-payment`, { method: 'PATCH' }),
   getShops: () => request('/shops'),
   createShop: (name) => request('/shops', { method: 'POST', body: JSON.stringify({ name }) }),
@@ -72,4 +73,6 @@ export const api = {
   addWheelPrize: (prize) => request('/wheel/prizes', { method: 'POST', body: JSON.stringify(prize) }),
   deleteWheelPrize: (id) => request(`/wheel/prizes/${id}`, { method: 'DELETE' }),
   spinWheel: () => request('/wheel/spin', { method: 'POST' }),
+  getRedemption: (token) => request(`/wheel/redeem/${encodeURIComponent(token)}`),
+  redeemPrize: (token) => request(`/wheel/redeem/${encodeURIComponent(token)}`, { method: 'POST' }),
 };

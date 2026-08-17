@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="logo footer-logo">
             Одежда<span>PRO</span>
           </div>
-          <p className="footer-text">Магазин мужской одежды. Учебный демо-проект, не является настоящим интернет-магазином.</p>
+          <p className="footer-text">ОдеждаPRO — надёжный интернет-магазин на ваш вкус.</p>
         </div>
         <div className="footer-col">
           <h4>Покупателям</h4>
@@ -32,13 +32,12 @@ export default function Footer() {
         <div className="footer-col">
           <h4>Контакты</h4>
           <ul>
-            <li>8 800 000-00-00</li>
-            <li>support@odezhdapro.demo</li>
+            <li>+996 555 03 13 11</li>
           </ul>
         </div>
       </div>
       <div className="footer-bottom">
-        <div className="container">© {new Date().getFullYear()} ОдеждаPRO — демо-проект</div>
+        <div className="container">© {new Date().getFullYear()} ОдеждаPRO</div>
       </div>
     </footer>
   );
