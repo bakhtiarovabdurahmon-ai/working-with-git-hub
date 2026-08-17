@@ -9,6 +9,7 @@ import usersRoutes from './routes/users.js';
 import productsRoutes from './routes/products.js';
 import ordersRoutes from './routes/orders.js';
 import shopsRoutes from './routes/shops.js';
+import wheelRoutes from './routes/wheel.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -53,6 +54,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/orders', ordersRoutes);
 app.use('/api/shops', shopsRoutes);
+app.use('/api/wheel', wheelRoutes);
 
 // Catches anything thrown/rejected in an /api handler (Express 5 forwards
 // async rejections here automatically) so a bad request — e.g. an

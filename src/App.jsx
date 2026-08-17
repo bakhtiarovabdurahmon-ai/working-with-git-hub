@@ -12,6 +12,7 @@ import Login from './pages/Login.jsx';
 import Admin from './pages/Admin.jsx';
 import GiftFinder from './pages/GiftFinder.jsx';
 import Orders from './pages/Orders.jsx';
+import Wheel from './pages/Wheel.jsx';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/favorites" element={<Favorites />} />
         <Route path="/gift" element={<GiftFinder />} />
         <Route path="/orders" element={<Orders />} />
+        <Route path="/wheel" element={<Wheel />} />
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
