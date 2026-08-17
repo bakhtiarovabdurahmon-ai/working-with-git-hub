@@ -43,6 +43,7 @@ function PhoneQr({ phone }) {
 export default function PaymentModal({ order, onClose, onPaid }) {
   const [step, setStep] = useState('details');
   const [receiptFileName, setReceiptFileName] = useState(null);
+  const [receiptImage, setReceiptImage] = useState(null);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
@@ -67,7 +68,11 @@ export default function PaymentModal({ order, onClose, onPaid }) {
 
   function handleFileChange(e) {
     const file = e.target.files && e.target.files[0];
-    if (file) setReceiptFileName(file.name);
+    if (!file) return;
+    setReceiptFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setReceiptImage(reader.result);
+    reader.readAsDataURL(file);
   }
 
   async function sendToVerification() {
@@ -75,7 +80,7 @@ export default function PaymentModal({ order, onClose, onPaid }) {
     setError(null);
     setSending(true);
     try {
-      await onPaid(receiptFileName);
+      await onPaid(receiptFileName, receiptImage);
       setStep('confirmed');
     } catch (err) {
       setError(err.message);
@@ -143,7 +148,7 @@ export default function PaymentModal({ order, onClose, onPaid }) {
               className="btn btn-primary btn-large"
               style={{ width: '100%' }}
               type="button"
-              disabled={!receiptFileName || sending}
+              disabled={!receiptImage || sending}
               onClick={sendToVerification}
             >
               {sending ? 'Отправляем…' : 'Отправить на проверку'}

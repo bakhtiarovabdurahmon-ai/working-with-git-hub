@@ -1,10 +1,12 @@
+import crypto from 'node:crypto';
 import { Router } from 'express';
 import WheelPrize from '../models/WheelPrize.js';
+import WheelRedemption from '../models/WheelRedemption.js';
 import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 
 const router = Router();
-const SPIN_COST = 1000;
+const SPIN_COST = 500;
 
 router.get('/prizes', requireAuth, async (req, res) => {
   const prizes = await WheelPrize.find({ active: true }).sort({ createdAt: -1 });
@@ -59,7 +61,42 @@ router.post('/spin', requireAuth, async (req, res) => {
   if (prize.type === 'cashback') user.cashback += prize.value;
   await user.save();
 
-  res.json({ prize: prize.toJSON(), cashback: user.cashback });
+  // Талон на выдачу — QR на клиенте кодирует ссылку на него, продавец
+  // сканирует и видит название приза, потом гасит талон при выдаче.
+  const redemption = await WheelRedemption.create({
+    token: crypto.randomBytes(12).toString('hex'),
+    prizeLabel: prize.label,
+    prizeType: prize.type,
+    prizeValue: prize.value,
+    buyerEmail: user.email,
+    sellerEmail: prize.sellerEmail,
+    shopId: prize.shopId,
+  });
+
+  res.json({ prize: prize.toJSON(), cashback: user.cashback, redemptionToken: redemption.token });
+});
+
+// Публичный просмотр талона — открывается по QR, сканер может не быть
+// залогинен, поэтому без requireAuth. Показывает только название приза,
+// без чувствительных данных.
+router.get('/redeem/:token', async (req, res) => {
+  const redemption = await WheelRedemption.findOne({ token: req.params.token });
+  if (!redemption) return res.status(404).json({ error: 'Талон не найден' });
+  res.json(redemption.toJSON());
+});
+
+// Продавец подтверждает выдачу приза — гасит талон, повторно им
+// воспользоваться нельзя.
+router.post('/redeem/:token', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const redemption = await WheelRedemption.findOne({ token: req.params.token });
+  if (!redemption) return res.status(404).json({ error: 'Талон не найден' });
+  if (redemption.redeemed) return res.status(400).json({ error: 'Приз уже выдан' });
+
+  redemption.redeemed = true;
+  redemption.redeemedAt = new Date();
+  redemption.redeemedBy = req.user.email;
+  await redemption.save();
+  res.json(redemption.toJSON());
 });
 
 export default router;

@@ -96,6 +96,17 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Баланс кешбека и роль могут поменяться из другого места (продавец
+  // начислил кешбек, супер админ выдал роль) — опрашиваем сервер, чтобы это
+  // отражалось без ручного обновления страницы.
+  useEffect(() => {
+    if (!serverMode || !hasToken) return;
+    const timer = setInterval(() => {
+      api.me().then(setServerUser).catch(() => {});
+    }, 15000);
+    return () => clearInterval(timer);
+  }, [serverMode, hasToken]);
+
   // Full account list is only needed for the admin panel — fetch it lazily,
   // once we know the current user really is staff (admin or superadmin are
   // allowed to call GET /api/users, see server/routes/users.js).

@@ -5,6 +5,7 @@ import { useStore, formatPrice } from '../store.jsx';
 import { useAuth, ROLE_LABELS } from '../auth.jsx';
 import { useTheme } from '../theme.js';
 import AddProductModal from './AddProductModal.jsx';
+import CashbackModal from './CashbackModal.jsx';
 
 export default function Header() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function Header() {
   const [query, setQuery] = useState(searchParams.get('q') || '');
   const [navOpen, setNavOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [cashbackOpen, setCashbackOpen] = useState(false);
   const { cartCount, favoritesCount, allProducts } = useStore();
   const { currentUser, logout, isSeller, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -87,10 +89,10 @@ export default function Header() {
                 {currentUser.code ? ` · ID ${currentUser.code}` : ''}
               </span>
             </span>
-            <Link to="/wheel" className="cashback-card">
+            <button type="button" className="cashback-card" onClick={() => setCashbackOpen(true)}>
               <span className="cashback-card-icon">💳</span>
               <span className="cashback-card-value">{currentUser.cashback || 0} кешбек</span>
-            </Link>
+            </button>
             {isSeller ? (
               <button type="button" className="user-bar-btn user-bar-btn-primary" onClick={() => setAddOpen(true)}>
                 + Добавить товар
@@ -130,6 +132,9 @@ export default function Header() {
       </nav>
 
       {addOpen ? <AddProductModal onClose={() => setAddOpen(false)} /> : null}
+      {cashbackOpen && currentUser ? (
+        <CashbackModal balance={currentUser.cashback || 0} onClose={() => setCashbackOpen(false)} />
+      ) : null}
     </div>
   );
 }

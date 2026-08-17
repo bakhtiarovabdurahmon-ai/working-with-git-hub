@@ -87,8 +87,8 @@ export default function Orders() {
     }
   }
 
-  async function handlePaid(receiptFileName) {
-    await markPaid(payOrder.id, receiptFileName);
+  async function handlePaid(receiptFileName, receiptImage) {
+    await markPaid(payOrder.id, receiptFileName, receiptImage);
   }
 
   const pendingOrder = myOrders.find((o) => o.status === 'pending_stock');
@@ -170,14 +170,29 @@ export default function Orders() {
                   </>
                 ) : null}
                 {order.status === 'payment_review' && isSuperadmin ? (
-                  <button
-                    className="btn btn-primary"
-                    type="button"
-                    disabled={busyId === order.id}
-                    onClick={() => handleConfirmPayment(order.id)}
-                  >
-                    Подтвердить перевод
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                    {order.receiptImage ? (
+                      <a href={order.receiptImage} target="_blank" rel="noreferrer">
+                        <img
+                          src={order.receiptImage}
+                          alt="Квитанция"
+                          style={{ maxWidth: 160, maxHeight: 160, borderRadius: 8, border: '1px solid var(--border)' }}
+                        />
+                      </a>
+                    ) : (
+                      <span className="pay-sub">Квитанция не прикреплена</span>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        className="btn btn-primary"
+                        type="button"
+                        disabled={busyId === order.id}
+                        onClick={() => handleConfirmPayment(order.id)}
+                      >
+                        Подтвердить перевод
+                      </button>
+                    </div>
+                  </div>
                 ) : null}
               </OrderCard>
             ))
