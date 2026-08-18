@@ -129,15 +129,6 @@ router.patch('/:id/stock', requireAuth, async (req, res) => {
   const inStock = !!req.body.inStock;
   order.status = inStock ? 'awaiting_payment' : 'out_of_stock';
 
-  // Продавец может сразу начислить покупателю кешбек за этот заказ.
-  if (inStock) {
-    const cashbackNum = Number(req.body.cashback) || 0;
-    if (cashbackNum > 0) {
-      order.cashbackAwarded = cashbackNum;
-      await User.findOneAndUpdate({ email: order.buyerEmail }, { $inc: { cashback: cashbackNum } });
-    }
-  }
-
   await order.save();
   res.json(order.toJSON());
 });

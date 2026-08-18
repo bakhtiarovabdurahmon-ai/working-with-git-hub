@@ -37,9 +37,6 @@ const orderSchema = new mongoose.Schema(
     // Скриншот квитанции целиком (data URL), чтобы супер админ реально мог
     // сверить сумму/время/номер платежа с заказом, а не просто видеть имя файла.
     receiptImage: { type: String, default: null },
-    // Кешбек (в сомах), который продавец начислил покупателю при подтверждении
-    // наличия товара — 0, если ничего не начислялось.
-    cashbackAwarded: { type: Number, default: 0 },
   },
   { timestamps: true }
 );
