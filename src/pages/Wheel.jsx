@@ -11,6 +11,10 @@ const USERS_KEY = 'wb_clone_users';
 
 const TYPE_LABELS = { clothing: 'Одежда', cashback: 'Кешбек', discount: 'Скидка' };
 const SEGMENT_COLORS = ['#1c3a5e', '#d4632a', '#2f567f', '#e8813f', '#12283f', '#f0955c'];
+// Расстояние подписи от центра колеса (radius самого колеса — 140px на
+// десктопе, 110px на мобильном, см. .wheel-outer) — чуть меньше половины,
+// чтобы подписи не наезжали друг на друга у края.
+const WHEEL_LABEL_RADIUS = 72;
 
 function readLocalPrizes() {
   try {
@@ -203,8 +207,17 @@ export default function Wheel() {
                 const angle = i * segmentAngle + segmentAngle / 2;
                 const flipped = angle > 90 && angle < 270;
                 return (
-                  <span key={p.id} className="wheel-segment-label" style={{ transform: `rotate(${angle}deg)`, textAlign: flipped ? 'left' : 'right' }}>
-                    <span style={{ display: 'inline-block', transform: flipped ? 'rotate(180deg)' : 'none' }}>{p.label}</span>
+                  <span
+                    key={p.id}
+                    className="wheel-segment-label"
+                    style={{ transform: `rotate(${angle}deg) translate(${WHEEL_LABEL_RADIUS}px)` }}
+                  >
+                    <span
+                      className="wheel-segment-label-text"
+                      style={{ transform: `translate(-50%, -50%) ${flipped ? 'rotate(180deg)' : ''}` }}
+                    >
+                      {p.label}
+                    </span>
                   </span>
                 );
               })}

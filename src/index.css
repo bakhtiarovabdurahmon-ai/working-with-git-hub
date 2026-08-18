@@ -1702,19 +1702,26 @@ a {
   transition: transform 4s cubic-bezier(0.17, 0.89, 0.32, 1.15);
 }
 
+/* Каждая подпись — точка на окружности (rotate+translate ставят саму точку
+   ровно на радиус WHEEL_LABEL_RADIUS), а текст внутри центрируется на этой
+   точке через translate(-50%,-50%) — так подписи не съезжают к центру и не
+   цепляют друг друга краем бокса, независимо от длины названия. */
 .wheel-segment-label {
   position: absolute;
   top: 50%;
   left: 50%;
   transform-origin: 0 0;
+}
+
+.wheel-segment-label-text {
+  position: absolute;
+  display: inline-block;
   color: #fff;
   font-size: 11px;
   font-weight: 700;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  width: 90px;
-  text-align: right;
-  margin-top: -8px;
-  margin-left: 20px;
+  max-width: 64px;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
