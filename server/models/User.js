@@ -14,9 +14,6 @@ const userSchema = new mongoose.Schema({
   // человека) могут состоять в одном магазине и вместе подтверждать заказы
   // друг друга. null = не назначен ни в какой магазин.
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
-  // Внутренняя валюта покупателя — начисляется продавцом при подтверждении
-  // заказа, тратится на прокрутку колеса фортуны (см. server/routes/wheel.js).
-  cashback: { type: Number, default: 0, min: 0 },
 });
 
 // Defense in depth: even if a route accidentally serializes the full

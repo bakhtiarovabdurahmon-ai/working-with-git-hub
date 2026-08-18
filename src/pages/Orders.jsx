@@ -45,7 +45,6 @@ export default function Orders() {
   const [payOrder, setPayOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [cashbackInputs, setCashbackInputs] = useState({});
   const [overlayDismissed, setOverlayDismissed] = useState(false);
 
   if (!currentUser) {
@@ -67,7 +66,7 @@ export default function Orders() {
     setActionError(null);
     setBusyId(id);
     try {
-      await confirmStock(id, inStock, inStock ? Number(cashbackInputs[id]) || 0 : 0);
+      await confirmStock(id, inStock);
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -142,15 +141,6 @@ export default function Orders() {
               <OrderCard key={order.id} order={order}>
                 {order.status === 'pending_stock' ? (
                   <>
-                    <input
-                      className="form-input"
-                      type="number"
-                      min="0"
-                      placeholder="Кешбек, сом"
-                      style={{ width: 130 }}
-                      value={cashbackInputs[order.id] || ''}
-                      onChange={(e) => setCashbackInputs((prev) => ({ ...prev, [order.id]: e.target.value }))}
-                    />
                     <button
                       className="btn btn-primary"
                       type="button"

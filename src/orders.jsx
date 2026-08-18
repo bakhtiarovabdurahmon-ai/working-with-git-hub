@@ -26,22 +26,6 @@ function genOrderNumber() {
   return 'OP-' + Math.floor(100000 + Math.random() * 900000);
 }
 
-// Локальный режим хранит аккаунты в том же ключе, что и auth.jsx —
-// начисляем кешбек прямо туда, чтобы баланс не расходился между модулями.
-const USERS_KEY = 'wb_clone_users';
-
-function creditLocalCashback(buyerEmail, amount) {
-  try {
-    const users = JSON.parse(localStorage.getItem(USERS_KEY)) || {};
-    const user = users[buyerEmail];
-    if (!user) return;
-    users[buyerEmail] = { ...user, cashback: (user.cashback || 0) + amount };
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  } catch (e) {
-    // ignore
-  }
-}
-
 function isStaffRole(role) {
   return role === 'admin' || role === 'superadmin';
 }
@@ -148,29 +132,18 @@ export function OrdersProvider({ children }) {
   );
 
   const confirmStock = useCallback(
-    async (id, inStock, cashback) => {
+    async (id, inStock) => {
       if (serverMode) {
-        await api.confirmStock(id, inStock, cashback);
+        await api.confirmStock(id, inStock);
         await refresh();
         return;
       }
-      const orders = readOrders();
-      const order = orders.find((o) => o.id === id);
-      const cashbackNum = Number(cashback) || 0;
-      const next = orders.map((o) =>
+      const next = readOrders().map((o) =>
         o.id === id
-          ? {
-              ...o,
-              status: inStock ? 'awaiting_payment' : 'out_of_stock',
-              cashbackAwarded: inStock && cashbackNum > 0 ? cashbackNum : o.cashbackAwarded || 0,
-              updatedAt: new Date().toISOString(),
-            }
+          ? { ...o, status: inStock ? 'awaiting_payment' : 'out_of_stock', updatedAt: new Date().toISOString() }
           : o
       );
       writeOrders(next);
-      if (inStock && cashbackNum > 0 && order) {
-        creditLocalCashback(order.buyerEmail, cashbackNum);
-      }
       await refresh();
     },
     [serverMode, refresh]

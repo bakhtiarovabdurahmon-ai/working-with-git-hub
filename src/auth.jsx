@@ -96,9 +96,8 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Баланс кешбека и роль могут поменяться из другого места (продавец
-  // начислил кешбек, супер админ выдал роль) — опрашиваем сервер, чтобы это
-  // отражалось без ручного обновления страницы.
+  // Роль может поменяться из другого места (супер админ выдал роль) —
+  // опрашиваем сервер, чтобы это отражалось без ручного обновления страницы.
   useEffect(() => {
     if (!serverMode || !hasToken) return;
     const timer = setInterval(() => {
@@ -179,7 +178,7 @@ export function AuthProvider({ children }) {
           code = generateCode();
         } while (taken.has(code));
       }
-      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'superadmin' : 'customer', code, shopId: null, cashback: 0 };
+      const user = { name: name.trim() || key, email: key, password, role: isFirstUser ? 'superadmin' : 'customer', code, shopId: null };
       const next = { ...users, [key]: user };
       setUsers(next);
       writeLocalUsers(next);
@@ -317,26 +316,6 @@ export function AuthProvider({ children }) {
     [users, shops, serverMode]
   );
 
-  // Обновляет отображаемый баланс кешбека сразу после прокрутки колеса
-  // (сервер уже списал/начислил — здесь просто отражаем это в UI без reload).
-  const setCashbackBalance = useCallback(
-    (value) => {
-      if (serverMode) {
-        setServerUser((prev) => (prev ? { ...prev, cashback: value } : prev));
-        return;
-      }
-      if (!sessionEmail) return;
-      setUsers((prev) => {
-        const target = prev[sessionEmail];
-        if (!target) return prev;
-        const next = { ...prev, [sessionEmail]: { ...target, cashback: value } };
-        writeLocalUsers(next);
-        return next;
-      });
-    },
-    [serverMode, sessionEmail]
-  );
-
   const currentUser = serverMode ? serverUser : sessionEmail ? users[sessionEmail] || null : null;
 
   const value = useMemo(
@@ -353,7 +332,6 @@ export function AuthProvider({ children }) {
       promoteByCode,
       createShop,
       assignToShop,
-      setCashbackBalance,
       isAdmin: currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
       isSuperadmin: currentUser?.role === 'superadmin',
       isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
@@ -372,7 +350,6 @@ export function AuthProvider({ children }) {
       promoteByCode,
       createShop,
       assignToShop,
-      setCashbackBalance,
       serverMode,
     ]
   );
