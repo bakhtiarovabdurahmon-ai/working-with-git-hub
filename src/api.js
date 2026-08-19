@@ -49,7 +49,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
-  requestCode: (email, name) => request('/auth/request-code', { method: 'POST', body: JSON.stringify({ email, name }) }),
+  requestCode: (email, name, company) =>
+    request('/auth/request-code', { method: 'POST', body: JSON.stringify({ email, name, company }) }),
   verifyCode: (email, code) => request('/auth/verify-code', { method: 'POST', body: JSON.stringify({ email, code }) }),
   me: () => request('/auth/me'),
   logout: () => request('/auth/logout', { method: 'POST' }),

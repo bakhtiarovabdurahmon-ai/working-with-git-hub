@@ -30,7 +30,12 @@ function generateCode() {
 
 router.post('/request-code', requestCodeLimiter, async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const { email, name, company } = req.body;
+    // Honeypot-поле — реальный человек его не видит, боты, автозаполняющие
+    // все поля формы, часто попадаются. Молча делаем вид, что всё в
+    // порядке, не тратя письмо/лимит попыток и не подсказывая, что засветились.
+    if (company) return res.json({ ok: true });
+
     const key = (email || '').trim().toLowerCase();
     if (!key) return res.status(400).json({ error: 'Укажите email' });
 
