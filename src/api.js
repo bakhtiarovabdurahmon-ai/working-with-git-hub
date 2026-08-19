@@ -77,6 +77,7 @@ export const api = {
   markOrderPaid: (id, receiptFileName, receiptImage) =>
     request(`/orders/${id}/receipt`, { method: 'PATCH', body: JSON.stringify({ receiptFileName, receiptImage }) }),
   confirmOrderPayment: (id) => request(`/orders/${id}/confirm-payment`, { method: 'PATCH' }),
+  shipOrder: (id, image, note) => request(`/orders/${id}/ship`, { method: 'PATCH', body: JSON.stringify({ image, note }) }),
   getShops: () => request('/shops'),
   createShop: (name) => request('/shops', { method: 'POST', body: JSON.stringify({ name }) }),
   assignToShop: (userCode, shopCode) => request('/shops/assign', { method: 'POST', body: JSON.stringify({ userCode, shopCode }) }),

@@ -13,7 +13,8 @@ const orderItemSchema = new mongoose.Schema(
 
 // Жизненный цикл заказа:
 // pending_stock (создан, ждёт продавца) -> awaiting_payment (товар есть, ждём перевод)
-//   -> payment_review (покупатель отметил "перевёл") -> completed (супер админ подтвердил перевод, товар отдаётся)
+//   -> payment_review (покупатель отметил "перевёл") -> shipping (перевод подтверждён, продавец готовит отправку)
+//   -> completed (продавец прикрепил скриншот отправки — заказ можно забирать/получать)
 // pending_stock -> out_of_stock (продавец сказал, что товара нет — тупиковый статус)
 const orderSchema = new mongoose.Schema(
   {
@@ -35,13 +36,18 @@ const orderSchema = new mongoose.Schema(
     deliveryAddress: { type: String, default: null },
     status: {
       type: String,
-      enum: ['pending_stock', 'out_of_stock', 'awaiting_payment', 'payment_review', 'completed'],
+      enum: ['pending_stock', 'out_of_stock', 'awaiting_payment', 'payment_review', 'shipping', 'completed'],
       default: 'pending_stock',
     },
     receiptFileName: { type: String, default: null },
     // Скриншот квитанции целиком (data URL), чтобы супер админ реально мог
     // сверить сумму/время/номер платежа с заказом, а не просто видеть имя файла.
     receiptImage: { type: String, default: null },
+    // Скриншот отправки (например, из приложения службы доставки) и
+    // комментарий продавца — покупатель должен увидеть это как подтверждение,
+    // что товар реально отправлен, а не просто узнать статус текстом.
+    shipmentImage: { type: String, default: null },
+    shipmentNote: { type: String, default: null },
   },
   { timestamps: true }
 );

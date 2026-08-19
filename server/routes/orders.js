@@ -248,13 +248,40 @@ router.patch('/:id/receipt', requireAuth, async (req, res) => {
 
 // Деньги всегда приходят на личные реквизиты супер админа, но подтвердить
 // перевод (по фото квитанции) может и сам продавец/коллега по магазину —
-// кто первый увидел и подтвердил, тот и подтвердил, заказ сразу закрывается.
+// кто первый увидел и подтвердил, тот и подтвердил. Заказ при этом не
+// закрывается сразу, а переходит в "shipping" — продавец ещё должен
+// отправить товар (например, через службу доставки) и прикрепить тому
+// подтверждение, см. PATCH /:id/ship ниже.
 router.patch('/:id/confirm-payment', requireAuth, async (req, res) => {
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ error: 'Заказ не найден' });
   if (!canManage(req.user, order)) return res.status(403).json({ error: 'Это не ваш заказ' });
   if (order.status !== 'payment_review') return res.status(400).json({ error: 'Заказ не ожидает подтверждения оплаты' });
 
+  order.status = 'shipping';
+  await order.save();
+  res.json(order.toJSON());
+});
+
+// Продавец прикрепляет скриншот отправки (например, из приложения службы
+// доставки) и, при желании, короткий комментарий — это и есть доказательство
+// покупателю, что товар реально отправлен. После этого заказ закрывается.
+router.patch('/:id/ship', requireAuth, async (req, res) => {
+  const order = await Order.findById(req.params.id);
+  if (!order) return res.status(404).json({ error: 'Заказ не найден' });
+  if (!canManage(req.user, order)) return res.status(403).json({ error: 'Это не ваш заказ' });
+  if (order.status !== 'shipping') return res.status(400).json({ error: 'Заказ не ожидает отправки' });
+
+  const image = (req.body.image || '').toString();
+  if (!image.startsWith('data:image/')) {
+    return res.status(400).json({ error: 'Прикрепите скриншот отправки' });
+  }
+  if (image.length > 4_000_000) {
+    return res.status(400).json({ error: 'Фото слишком большое, выберите поменьше' });
+  }
+
+  order.shipmentImage = image;
+  order.shipmentNote = String(req.body.note || '').trim().slice(0, 500);
   order.status = 'completed';
   await order.save();
   res.json(order.toJSON());

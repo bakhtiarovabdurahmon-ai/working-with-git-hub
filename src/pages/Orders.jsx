@@ -10,7 +10,8 @@ const STATUS_LABELS = {
   out_of_stock: 'Товара нет в наличии',
   awaiting_payment: 'Товар в наличии — можно оплатить',
   payment_review: 'Оплата на проверке у супер админа',
-  completed: 'Готово, товар выдан',
+  shipping: 'Оплата подтверждена — продавец готовит отправку',
+  completed: 'Товар отправлен',
 };
 
 const FULFILLMENT_LABELS = {
@@ -26,6 +27,73 @@ function DeliveryAddress({ address }) {
   return (
     <div className="pay-sub">
       📍 {before} <a href={url} target="_blank" rel="noreferrer">Открыть на карте</a>
+    </div>
+  );
+}
+
+function ShipmentProof({ order }) {
+  if (!order.shipmentImage) return null;
+  return (
+    <div className="pay-sub" style={{ display: 'flex', flexDirection: 'column', gap: 6, margin: '4px 0' }}>
+      <span>📦 Продавец отправил товар — подтверждение:</span>
+      <a href={order.shipmentImage} target="_blank" rel="noreferrer">
+        <img
+          src={order.shipmentImage}
+          alt="Подтверждение отправки"
+          style={{ maxWidth: 160, maxHeight: 160, borderRadius: 8, border: '1px solid var(--border)' }}
+        />
+      </a>
+      {order.shipmentNote ? <span>«{order.shipmentNote}»</span> : null}
+    </div>
+  );
+}
+
+function ShipForm({ order, onSubmit }) {
+  const [image, setImage] = useState(null);
+  const [fileName, setFileName] = useState(null);
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
+
+  function handleFileChange(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => setImage(reader.result);
+    reader.readAsDataURL(file);
+  }
+
+  async function handleSubmit() {
+    setError(null);
+    setSending(true);
+    try {
+      await onSubmit(order.id, image, note.trim());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+      <label className={`pay-upload-box ${fileName ? 'has-file' : ''}`}>
+        <span className="pay-upload-icon">📎</span>
+        <span>{fileName ? '✓ ' + fileName : 'Скриншот отправки (например, из приложения службы доставки)'}</span>
+        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileChange} />
+      </label>
+      <input
+        className="form-input"
+        type="text"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder="Комментарий покупателю (необязательно)"
+      />
+      {error ? <div className="form-error">{error}</div> : null}
+      <button className="btn btn-primary" type="button" disabled={!image || sending} onClick={handleSubmit}>
+        {sending ? 'Отправляем…' : 'Товар отправлен'}
+      </button>
     </div>
   );
 }
@@ -56,7 +124,7 @@ function OrderCard({ order, children }) {
 
 export default function Orders() {
   const { currentUser } = useAuth();
-  const { myOrders, sellerOrders, confirmStock, markPaid, confirmPayment } = useOrders();
+  const { myOrders, sellerOrders, confirmStock, markPaid, confirmPayment, shipOrder } = useOrders();
   const [payOrder, setPayOrder] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -104,13 +172,20 @@ export default function Orders() {
     await markPaid(payOrder.id, receiptFileName, receiptImage);
   }
 
+  async function handleShip(id, image, note) {
+    await shipOrder(id, image, note);
+  }
+
   const pendingStockOrder = myOrders.find((o) => o.status === 'pending_stock');
   const pendingPaymentOrder = myOrders.find((o) => o.status === 'payment_review');
-  const pendingOrder = pendingStockOrder || pendingPaymentOrder;
+  const pendingShippingOrder = myOrders.find((o) => o.status === 'shipping');
+  const pendingOrder = pendingStockOrder || pendingPaymentOrder || pendingShippingOrder;
   const showOverlay = !!pendingOrder && !overlayDismissed;
   const overlayText = pendingStockOrder
     ? 'Проверка товара на наличие — это может занять несколько минут'
-    : 'Оплата на проверке у супер админа — это может занять некоторое время';
+    : pendingPaymentOrder
+    ? 'Оплата на проверке у супер админа — это может занять некоторое время'
+    : 'Оплата подтверждена — продавец готовит и отправляет ваш товар';
 
   return (
     <main className="container">
@@ -145,6 +220,7 @@ export default function Orders() {
                   Оплатить
                 </button>
               ) : null}
+              <ShipmentProof order={order} />
             </OrderCard>
           ))
         )}
@@ -203,6 +279,7 @@ export default function Orders() {
                     </div>
                   </div>
                 ) : null}
+                {order.status === 'shipping' ? <ShipForm order={order} onSubmit={handleShip} /> : null}
               </OrderCard>
             ))
           )}

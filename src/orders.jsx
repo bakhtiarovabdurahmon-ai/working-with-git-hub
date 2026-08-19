@@ -175,14 +175,32 @@ export function OrdersProvider({ children }) {
         await refresh();
         return;
       }
-      const next = readOrders().map((o) => (o.id === id ? { ...o, status: 'completed', updatedAt: new Date().toISOString() } : o));
+      const next = readOrders().map((o) => (o.id === id ? { ...o, status: 'shipping', updatedAt: new Date().toISOString() } : o));
       writeOrders(next);
       await refresh();
     },
     [serverMode, refresh]
   );
 
-  const value = { myOrders, sellerOrders, createOrders, confirmStock, markPaid, confirmPayment, refresh, serverMode };
+  const shipOrder = useCallback(
+    async (id, image, note) => {
+      if (serverMode) {
+        await api.shipOrder(id, image, note);
+        await refresh();
+        return;
+      }
+      const next = readOrders().map((o) =>
+        o.id === id
+          ? { ...o, status: 'completed', shipmentImage: image, shipmentNote: note || null, updatedAt: new Date().toISOString() }
+          : o
+      );
+      writeOrders(next);
+      await refresh();
+    },
+    [serverMode, refresh]
+  );
+
+  const value = { myOrders, sellerOrders, createOrders, confirmStock, markPaid, confirmPayment, shipOrder, refresh, serverMode };
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;
 }
