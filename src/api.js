@@ -59,8 +59,17 @@ export const api = {
     request(`/users/${encodeURIComponent(email)}`, { method: 'PATCH', body: JSON.stringify({ role }) }),
   promoteByCode: (code) => request('/users/promote-by-code', { method: 'POST', body: JSON.stringify({ code }) }),
   getProducts: () => request('/products'),
+  searchProducts: (q) => request(`/products/search?q=${encodeURIComponent(q)}`),
   createProduct: (product) => request('/products', { method: 'POST', body: JSON.stringify(product) }),
-  deleteProduct: (id) => request(`/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  joinProductStock: (productId, sizes) =>
+    request(`/products/${encodeURIComponent(productId)}/stock`, { method: 'POST', body: JSON.stringify({ sizes }) }),
+  getMyStock: () => request('/products/stock/mine'),
+  getAllStock: () => request('/products/stock'),
+  updateStock: (stockId, sizes) =>
+    request(`/products/stock/${encodeURIComponent(stockId)}`, { method: 'PATCH', body: JSON.stringify({ sizes }) }),
+  deleteStock: (stockId) => request(`/products/stock/${encodeURIComponent(stockId)}`, { method: 'DELETE' }),
+  setShift: (onShift) => request('/users/me/shift', { method: 'PATCH', body: JSON.stringify({ onShift }) }),
+  getDailyReport: (date) => request(`/orders/report${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   createOrders: (items, fulfillment, address) =>
     request('/orders', { method: 'POST', body: JSON.stringify({ items, fulfillment, address }) }),
   getMyOrders: () => request('/orders/mine'),

@@ -103,7 +103,7 @@ export function OrdersProvider({ children }) {
       items.forEach((it) => {
         const key = it.shopId || it.sellerEmail || '__store__';
         if (!groups.has(key)) groups.set(key, { shopId: it.shopId || null, sellerEmail: it.sellerEmail || null, items: [] });
-        groups.get(key).items.push({ productId: it.productId, title: it.title, price: it.price, qty: it.qty });
+        groups.get(key).items.push({ productId: it.productId, title: it.title, price: it.price, qty: it.qty, size: it.size });
       });
 
       const now = new Date().toISOString();

@@ -17,20 +17,20 @@ export default function Cart() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
 
-  const ids = Object.keys(cart);
   let total = 0;
   let totalOld = 0;
   let itemsCount = 0;
-  const items = ids.map((id) => getProduct(id)).filter(Boolean);
-  items.forEach((p) => {
-    const qty = cart[p.id];
-    total += p.price * qty;
-    totalOld += (p.oldPrice || p.price) * qty;
-    itemsCount += qty;
+  const items = Object.entries(cart)
+    .map(([key, line]) => ({ key, size: line.size, qty: line.qty, product: getProduct(line.productId) }))
+    .filter((it) => it.product);
+  items.forEach((it) => {
+    total += it.product.price * it.qty;
+    totalOld += (it.product.oldPrice || it.product.price) * it.qty;
+    itemsCount += it.qty;
   });
   const discount = totalOld - total;
 
-  const hasDemoItems = items.some((p) => !isOrderable(p, serverMode));
+  const hasDemoItems = items.some((it) => !isOrderable(it.product, serverMode));
 
   async function handlePlaceOrder(fulfillment, address) {
     setError(null);
@@ -40,13 +40,12 @@ export default function Cart() {
     }
     setPlacing(true);
     try {
-      const orderItems = items.map((p) => ({
-        productId: p.id,
-        title: p.title,
-        price: p.price,
-        qty: cart[p.id],
-        sellerEmail: p.sellerEmail || null,
-        shopId: p.shopId || null,
+      const orderItems = items.map((it) => ({
+        productId: it.product.id,
+        title: it.product.title,
+        price: it.product.price,
+        qty: it.qty,
+        size: it.size,
       }));
       await createOrders(orderItems, fulfillment, address);
       clearCart();
@@ -127,32 +126,29 @@ export default function Cart() {
             </div>
           ) : (
             <div>
-              {items.map((p) => {
-                const qty = cart[p.id];
-                return (
-                  <div className="cart-item" key={p.id}>
-                    <Link to={`/product/${p.id}`} className="cart-item-media" style={{ background: p.image ? '#fff' : p.color }}>
-                      {p.image ? <img src={p.image} alt={p.title} className="cart-item-photo" /> : p.emoji}
-                    </Link>
-                    <div className="cart-item-info">
-                      <Link to={`/product/${p.id}`} className="cart-item-title">{p.title}</Link>
-                      <div className="cart-item-brand">{p.brand}</div>
-                      <button className="cart-item-remove" type="button" onClick={() => removeFromCart(p.id)}>
-                        Удалить
-                      </button>
-                    </div>
-                    <div className="cart-item-qty">
-                      <button type="button" onClick={() => setCartQty(p.id, qty - 1)}>−</button>
-                      <span>{qty}</span>
-                      <button type="button" onClick={() => setCartQty(p.id, qty + 1)}>+</button>
-                    </div>
-                    <div className="cart-item-price">
-                      <span className="price-current">{formatPrice(p.price * qty)}</span>
-                      {p.oldPrice ? <span className="price-old">{formatPrice(p.oldPrice * qty)}</span> : null}
-                    </div>
+              {items.map(({ key, product: p, size, qty }) => (
+                <div className="cart-item" key={key}>
+                  <Link to={`/product/${p.id}`} className="cart-item-media" style={{ background: p.image ? '#fff' : p.color }}>
+                    {p.image ? <img src={p.image} alt={p.title} className="cart-item-photo" /> : p.emoji}
+                  </Link>
+                  <div className="cart-item-info">
+                    <Link to={`/product/${p.id}`} className="cart-item-title">{p.title}</Link>
+                    <div className="cart-item-brand">{p.brand} · размер {size}</div>
+                    <button className="cart-item-remove" type="button" onClick={() => removeFromCart(key)}>
+                      Удалить
+                    </button>
                   </div>
-                );
-              })}
+                  <div className="cart-item-qty">
+                    <button type="button" onClick={() => setCartQty(key, qty - 1)}>−</button>
+                    <span>{qty}</span>
+                    <button type="button" onClick={() => setCartQty(key, qty + 1)}>+</button>
+                  </div>
+                  <div className="cart-item-price">
+                    <span className="price-current">{formatPrice(p.price * qty)}</span>
+                    {p.oldPrice ? <span className="price-old">{formatPrice(p.oldPrice * qty)}</span> : null}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

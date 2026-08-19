@@ -35,6 +35,14 @@ router.patch('/:email', requireAuth, requireRole('admin', 'superadmin'), async (
   res.json(target.toJSON());
 });
 
+// Продавец сам закрывает/открывает свою личную смену — пока закрыта, заказы
+// на его сток не маршрутизируются (см. server/routes/orders.js).
+router.patch('/me/shift', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  req.user.onShift = !!req.body.onShift;
+  await req.user.save();
+  res.json(req.user.toJSON());
+});
+
 // Superadmin promotes someone to admin by their ID code instead of hunting
 // them down in the table.
 router.post('/promote-by-code', requireAuth, requireRole('superadmin'), async (req, res) => {

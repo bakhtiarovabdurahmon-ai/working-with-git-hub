@@ -1,11 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 import { useStore, formatPrice, isOrderable } from '../store.jsx';
 import Stars from './Stars.jsx';
 
 export default function ProductCard({ product: p, onTryOn }) {
-  const { isFavorite, toggleFavorite, addToCart, serverMode } = useStore();
-  const [added, setAdded] = useState(false);
+  const { isFavorite, toggleFavorite, serverMode } = useStore();
   const fav = isFavorite(p.id);
   const orderable = isOrderable(p, serverMode);
 
@@ -44,20 +42,14 @@ export default function ProductCard({ product: p, onTryOn }) {
           <span className="price-current">{formatPrice(p.price)}</span>
           {p.oldPrice ? <span className="price-old">{formatPrice(p.oldPrice)}</span> : null}
         </div>
-        <button
-          type="button"
-          className={`btn btn-primary btn-add-cart ${added ? 'added' : ''}`}
-          disabled={!orderable}
+        <Link
+          className="btn btn-primary btn-add-cart"
+          style={!orderable ? { pointerEvents: 'none', opacity: 0.6 } : undefined}
+          to={orderable ? `/product/${p.id}` : '#'}
           title={orderable ? undefined : 'Демо-товар, недоступен для заказа'}
-          onClick={() => {
-            if (!orderable) return;
-            addToCart(p.id, 1);
-            setAdded(true);
-            setTimeout(() => setAdded(false), 1200);
-          }}
         >
-          {!orderable ? 'Демо-товар' : added ? 'Добавлено ✓' : 'В корзину'}
-        </button>
+          {!orderable ? 'Демо-товар' : 'Выбрать размер'}
+        </Link>
         {onTryOn ? (
           <button
             type="button"

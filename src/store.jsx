@@ -1,11 +1,13 @@
 // Корзина и избранное — всегда локально (localStorage), это личные данные
-// браузера, а не общий каталог. Товары, добавленные продавцами, идут через
-// backend API (server/, MongoDB), если он доступен; если нет — тоже
-// откатываются на localStorage (и тогда видны только в этом браузере).
+// браузера, а не общий каталог. Товары (общие карточки) и сток продавцов —
+// через backend API (server/, MongoDB), если он доступен; если нет — тоже
+// откатываются на localStorage (и тогда видны только в этом браузере,
+// без нескольких магазинов на одной карточке — это только для сервера).
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { PRODUCTS } from './data.js';
 import { api, checkServer } from './api.js';
+import { useAuth } from './auth.jsx';
 
 const CART_KEY = 'wb_clone_cart';
 const FAV_KEY = 'wb_clone_favorites';
@@ -36,16 +38,41 @@ export function isOrderable(product, serverMode) {
   return !(serverMode && product.isDemo);
 }
 
+// Есть ли хоть у одного магазина этот размер в наличии — sizeStock приходит
+// с сервера (сумма по всем магазинам, см. server/routes/products.js). В
+// офлайн-режиме такой агрегации нет, тогда ориентируемся на общий inStock.
+export function sizeHasStock(product, size) {
+  if (!product) return false;
+  if (product.sizeStock) return (product.sizeStock[size] || 0) > 0;
+  return product.inStock !== false;
+}
+
+function cartKey(productId, size) {
+  return `${productId}::${size}`;
+}
+
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
+  const { isSeller } = useAuth();
   const [cart, setCart] = useState(() => readStore(CART_KEY));
   const [favorites, setFavorites] = useState(() => readStore(FAV_KEY));
   const [customProducts, setCustomProducts] = useState([]);
+  const [myStock, setMyStock] = useState([]);
   const [serverMode, setServerMode] = useState(null); // null = ещё проверяем
 
   useEffect(() => writeStore(CART_KEY, cart), [cart]);
   useEffect(() => writeStore(FAV_KEY, favorites), [favorites]);
+
+  const loadProducts = useCallback(async () => {
+    if (serverMode) {
+      try {
+        setCustomProducts(await api.getProducts());
+      } catch (e) {
+        // ignore — keep whatever list we already had
+      }
+    }
+  }, [serverMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,57 +99,112 @@ export function StoreProvider({ children }) {
     if (serverMode === false) writeStore(CUSTOM_PRODUCTS_KEY, customProducts);
   }, [customProducts, serverMode]);
 
+  const loadMyStock = useCallback(async () => {
+    if (!serverMode || !isSeller) {
+      setMyStock([]);
+      return;
+    }
+    try {
+      setMyStock(await api.getMyStock());
+    } catch (e) {
+      setMyStock([]);
+    }
+  }, [serverMode, isSeller]);
+
+  useEffect(() => {
+    loadMyStock();
+  }, [loadMyStock]);
+
+  // Создать новую общую карточку + первую стоковую строку (я — первый
+  // магазин, кто её продаёт). sizes: [{ size, qty }].
   const addProduct = useCallback(
     async (product) => {
       if (serverMode) {
         const created = await api.createProduct(product);
         setCustomProducts((prev) => [created, ...prev]);
+        await loadMyStock();
         return created;
       }
       const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const withId = { ...product, id };
+      const withId = { ...product, id, sizes: (product.sizes || []).map((s) => s.size || s) };
       setCustomProducts((prev) => [withId, ...prev]);
       return withId;
     },
-    [serverMode]
+    [serverMode, loadMyStock]
   );
 
-  const removeProduct = useCallback(
-    async (id) => {
-      if (serverMode) {
-        await api.deleteProduct(id);
-      }
-      setCustomProducts((prev) => prev.filter((p) => p.id !== id));
+  // Присоединить свой сток к уже существующей карточке (другой магазин уже
+  // продаёт то же самое) — карточка остаётся одна.
+  const joinStock = useCallback(
+    async (productId, sizes) => {
+      if (!serverMode) throw new Error('Присоединение к чужому товару доступно только на сервере');
+      await api.joinProductStock(productId, sizes);
+      await Promise.all([loadProducts(), loadMyStock()]);
     },
-    [serverMode]
+    [serverMode, loadProducts, loadMyStock]
+  );
+
+  const updateMyStock = useCallback(
+    async (stockId, sizes) => {
+      if (serverMode) {
+        await api.updateStock(stockId, sizes);
+        await Promise.all([loadProducts(), loadMyStock()]);
+      }
+    },
+    [serverMode, loadProducts, loadMyStock]
+  );
+
+  // Убрать свой сток с карточки (карточка остаётся, если её продают и
+  // другие магазины) — в офлайн-режиме своя карточка одна на весь товар,
+  // поэтому там это по-прежнему удаляет саму карточку.
+  const removeMyStock = useCallback(
+    async (stockId) => {
+      if (serverMode) {
+        await api.deleteStock(stockId);
+        await Promise.all([loadProducts(), loadMyStock()]);
+      } else {
+        setCustomProducts((prev) => prev.filter((p) => p.id !== stockId));
+      }
+    },
+    [serverMode, loadProducts, loadMyStock]
   );
 
   const allProducts = useMemo(() => [...customProducts, ...PRODUCTS], [customProducts]);
 
   const getProduct = useCallback((id) => allProducts.find((p) => p.id === id), [allProducts]);
 
+  const myStockForProduct = useCallback((productId) => myStock.find((s) => s.productId === productId), [myStock]);
+
   const addToCart = useCallback(
-    (productId, qty = 1) => {
+    (productId, size, qty = 1) => {
       const product = allProducts.find((p) => p.id === productId);
       if (product && !isOrderable(product, serverMode)) return;
-      setCart((prev) => ({ ...prev, [productId]: (prev[productId] || 0) + qty }));
+      if (product && !sizeHasStock(product, size)) return;
+      const key = cartKey(productId, size);
+      setCart((prev) => ({
+        ...prev,
+        [key]: { productId, size, qty: (prev[key]?.qty || 0) + qty },
+      }));
     },
     [allProducts, serverMode]
   );
 
-  const setCartQty = useCallback((productId, qty) => {
+  const setCartQty = useCallback((key, qty) => {
     setCart((prev) => {
       const next = { ...prev };
-      if (qty <= 0) delete next[productId];
-      else next[productId] = qty;
+      if (qty <= 0) {
+        delete next[key];
+      } else if (next[key]) {
+        next[key] = { ...next[key], qty };
+      }
       return next;
     });
   }, []);
 
-  const removeFromCart = useCallback((productId) => {
+  const removeFromCart = useCallback((key) => {
     setCart((prev) => {
       const next = { ...prev };
-      delete next[productId];
+      delete next[key];
       return next;
     });
   }, []);
@@ -146,7 +228,7 @@ export function StoreProvider({ children }) {
     [favorites]
   );
 
-  const cartCount = Object.values(cart).reduce((sum, qty) => sum + qty, 0);
+  const cartCount = Object.values(cart).reduce((sum, line) => sum + line.qty, 0);
   const favoritesCount = Object.keys(favorites).length;
 
   const value = {
@@ -163,7 +245,11 @@ export function StoreProvider({ children }) {
     customProducts,
     allProducts,
     addProduct,
-    removeProduct,
+    joinStock,
+    updateMyStock,
+    removeMyStock,
+    myStock,
+    myStockForProduct,
     getProduct,
     serverMode,
   };

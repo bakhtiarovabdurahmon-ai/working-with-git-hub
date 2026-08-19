@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getCategoryTitle } from '../data.js';
-import { useStore, formatPrice, isOrderable } from '../store.jsx';
+import { useStore, formatPrice, isOrderable, sizeHasStock } from '../store.jsx';
 import { useAuth } from '../auth.jsx';
 import Stars from '../components/Stars.jsx';
 import ProductCard from '../components/ProductCard.jsx';
@@ -9,8 +9,9 @@ import ProductCard from '../components/ProductCard.jsx';
 export default function Product() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct, removeProduct, serverMode } = useStore();
-  const { currentUser, isAdmin } = useAuth();
+  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct, myStockForProduct, removeMyStock, serverMode } =
+    useStore();
+  const { isAdmin } = useAuth();
   const product = getProduct(id);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(product ? product.sizes[0] : null);
@@ -41,26 +42,24 @@ export default function Product() {
   const fav = isFavorite(product.id);
   const related = allProducts.filter((p) => p.category === product.category && p.id !== product.id).slice(0, 4);
   const orderable = isOrderable(product, serverMode);
-  const canDelete =
-    !product.isDemo &&
-    currentUser &&
-    (isAdmin ||
-      currentUser.email === product.sellerEmail ||
-      (currentUser.shopId && product.shopId && String(currentUser.shopId) === String(product.shopId)));
+  const sizeAvailable = size ? sizeHasStock(product, size) : false;
+  const myStock = myStockForProduct(product.id);
+  const canDelete = !product.isDemo && !!myStock;
 
   function handleAddToCart() {
-    if (!orderable) return;
-    addToCart(product.id, qty);
+    if (!orderable || !sizeAvailable) return;
+    addToCart(product.id, size, qty);
     setAddedText('Добавлено в корзину ✓');
     setTimeout(() => setAddedText(null), 1500);
   }
 
   async function handleDelete() {
-    if (!window.confirm('Удалить этот товар безвозвратно?')) return;
+    if (!myStock) return;
+    if (!window.confirm(isAdmin ? 'Удалить сток этого магазина по товару?' : 'Убрать этот товар из вашего склада?')) return;
     setDeleteError(null);
     setDeleting(true);
     try {
-      await removeProduct(product.id);
+      await removeMyStock(myStock.id);
       navigate('/catalog');
     } catch (err) {
       setDeleteError(err.message);
@@ -100,8 +99,8 @@ export default function Product() {
             {product.oldPrice ? <span className="price-old large">{formatPrice(product.oldPrice)}</span> : null}
             {product.discount ? <span className="save-badge">Экономия {formatPrice(product.oldPrice - product.price)}</span> : null}
           </div>
-          <div className={`stock-status ${product.inStock ? 'in-stock' : 'out-stock'}`}>
-            {product.inStock ? '✓ В наличии' : 'Нет в наличии'}
+          <div className={`stock-status ${sizeAvailable ? 'in-stock' : 'out-stock'}`}>
+            {sizeAvailable ? '✓ В наличии' : 'Нет в наличии в этом размере'}
           </div>
           {!orderable ? (
             <div className="stock-status out-stock">Витринный товар — недоступен для заказа</div>
@@ -109,16 +108,20 @@ export default function Product() {
           <div className="size-picker">
             <div className="size-picker-label">Размер:</div>
             <div className="size-options">
-              {product.sizes.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`size-option ${s === size ? 'selected' : ''}`}
-                  onClick={() => setSize(s)}
-                >
-                  {s}
-                </button>
-              ))}
+              {product.sizes.map((s) => {
+                const available = sizeHasStock(product, s);
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`size-option ${s === size ? 'selected' : ''}`}
+                    style={available ? undefined : { opacity: 0.4 }}
+                    onClick={() => setSize(s)}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="qty-picker">
@@ -128,7 +131,7 @@ export default function Product() {
             <button type="button" onClick={() => setQty((v) => v + 1)}>+</button>
           </div>
           <div className="product-actions">
-            <button className="btn btn-primary btn-large" disabled={!product.inStock || !orderable} onClick={handleAddToCart}>
+            <button className="btn btn-primary btn-large" disabled={!sizeAvailable || !orderable} onClick={handleAddToCart}>
               {!orderable ? 'Демо-товар' : addedText || 'Добавить в корзину'}
             </button>
             <button

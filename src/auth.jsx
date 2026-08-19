@@ -316,6 +316,27 @@ export function AuthProvider({ children }) {
     [users, shops, serverMode]
   );
 
+  // Продавец закрывает/открывает личную смену — пока закрыта, заказы на его
+  // сток не маршрутизируются (см. server/routes/orders.js).
+  const toggleShift = useCallback(
+    async (onShift) => {
+      if (serverMode) {
+        const updated = await api.setShift(onShift);
+        setServerUser(updated);
+        return updated;
+      }
+      if (!sessionEmail) return;
+      setUsers((prev) => {
+        const target = prev[sessionEmail];
+        if (!target) return prev;
+        const next = { ...prev, [sessionEmail]: { ...target, onShift } };
+        writeLocalUsers(next);
+        return next;
+      });
+    },
+    [serverMode, sessionEmail]
+  );
+
   const currentUser = serverMode ? serverUser : sessionEmail ? users[sessionEmail] || null : null;
 
   const value = useMemo(
@@ -332,6 +353,7 @@ export function AuthProvider({ children }) {
       promoteByCode,
       createShop,
       assignToShop,
+      toggleShift,
       isAdmin: currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
       isSuperadmin: currentUser?.role === 'superadmin',
       isSeller: currentUser?.role === 'seller' || currentUser?.role === 'admin' || currentUser?.role === 'superadmin',
@@ -350,6 +372,7 @@ export function AuthProvider({ children }) {
       promoteByCode,
       createShop,
       assignToShop,
+      toggleShift,
       serverMode,
     ]
   );
