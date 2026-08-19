@@ -142,10 +142,10 @@ export function AuthProvider({ children }) {
   }, [serverMode, serverUser]);
 
   // Серверный режим: вход по коду из письма (без пароля).
-  const requestCode = useCallback(async (name, email) => {
+  const requestCode = useCallback(async (name, email, company) => {
     const key = email.trim().toLowerCase();
     if (!key) throw new Error('Укажите email');
-    await api.requestCode(key, name);
+    await api.requestCode(key, name, company);
   }, []);
 
   const verifyCode = useCallback(async (email, code) => {

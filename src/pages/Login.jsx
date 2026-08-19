@@ -15,6 +15,10 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [codeStep, setCodeStep] = useState('email'); // 'email' | 'code'
+  // Honeypot-поле: обычному человеку его не видно и не выделить табом, а
+  // ботам, автозаполняющим все поля формы подряд, деться некуда — если оно
+  // непустое, сервер молча делает вид, что всё в порядке, и ничего не шлёт.
+  const [company, setCompany] = useState('');
 
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -41,7 +45,7 @@ export default function Login() {
     setError(null);
     setSubmitting(true);
     try {
-      await requestCode(name, email);
+      await requestCode(name, email, company);
       setCodeStep('code');
       setNotice('Код отправлен на ' + email.trim().toLowerCase());
     } catch (err) {
@@ -119,6 +123,18 @@ export default function Login() {
         {serverMode === null ? null : serverMode ? (
           codeStep === 'email' ? (
             <form onSubmit={handleRequestCode}>
+              <div style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }} aria-hidden="true">
+                <label htmlFor="company">Company</label>
+                <input
+                  id="company"
+                  type="text"
+                  name="company"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                />
+              </div>
               <div className="form-row">
                 <label className="form-label">Имя (для нового аккаунта)</label>
                 <input className="form-input" type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Как к вам обращаться" />

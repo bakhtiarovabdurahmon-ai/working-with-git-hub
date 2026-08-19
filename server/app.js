@@ -10,6 +10,7 @@ import productsRoutes from './routes/products.js';
 import ordersRoutes from './routes/orders.js';
 import shopsRoutes from './routes/shops.js';
 import { rateLimit, ipKey } from './middleware/rateLimit.js';
+import { honeypot, honeypotFlaggedRecently } from './middleware/honeypot.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DIST_DIR = path.join(__dirname, '..', 'dist');
@@ -21,6 +22,21 @@ const app = express();
 // real client IP from X-Forwarded-For.
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+
+// Ловушка для сканеров — реальный трафик никогда не запросит /wp-login.php,
+// /.env и подобные пути на этом сайте, только автоматические боты. Кто
+// попался — IP помечается и ниже получает сильно урезанный лимит запросов
+// на сутки (см. honeypotFlaggedRecently). Стоит первым, до CORS/парсинга
+// тела — совсем не тратим на такие запросы лишнюю работу.
+app.use(honeypot);
+
+// Уже помеченные (ранее попались в ловушку) IP получают гораздо более
+// жёсткий лимит на весь сайт, а не только на конкретные точечные ручки.
+const honeypotStrictLimiter = rateLimit({ windowMs: 5 * 60 * 1000, max: 5, keyFn: ipKey });
+app.use((req, res, next) => {
+  if (honeypotFlaggedRecently(ipKey(req))) return honeypotStrictLimiter(req, res, next);
+  next();
+});
 
 // Browsers only need CORS at all because the frontend and API are meant to
 // be same-origin (see api.js) — this allowlist exists to stop an arbitrary
