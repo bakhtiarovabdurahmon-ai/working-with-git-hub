@@ -28,6 +28,10 @@ const orderSchema = new mongoose.Schema(
     items: { type: [orderItemSchema], default: [] },
     total: { type: Number, required: true },
     fulfillment: { type: String, enum: ['delivery', 'reserve'], required: true },
+    // Только для fulfillment=delivery — либо координаты с браузерной
+    // геолокации (со ссылкой на карту), либо адрес, введённый вручную, если
+    // покупатель не разрешил доступ к местоположению.
+    deliveryAddress: { type: String, default: null },
     status: {
       type: String,
       enum: ['pending_stock', 'out_of_stock', 'awaiting_payment', 'payment_review', 'completed'],

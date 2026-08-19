@@ -30,6 +30,11 @@ router.post('/', requireAuth, createOrderLimiter, async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ error: 'Корзина пуста' });
     if (!['delivery', 'reserve'].includes(fulfillment)) return res.status(400).json({ error: 'Укажите способ получения' });
 
+    const address = String(req.body.address || '').trim().slice(0, 300);
+    if (fulfillment === 'delivery' && !address) {
+      return res.status(400).json({ error: 'Укажите адрес доставки' });
+    }
+
     // Price, title, seller and shop all come from the Product record in the
     // database, never from the client — otherwise a tampered request could
     // set an arbitrary price or route the order to the wrong shop.
@@ -66,6 +71,7 @@ router.post('/', requireAuth, createOrderLimiter, async (req, res) => {
         items: group.items,
         total,
         fulfillment,
+        deliveryAddress: fulfillment === 'delivery' ? address : null,
       });
       created.push(order);
 
@@ -155,13 +161,13 @@ router.patch('/:id/receipt', requireAuth, async (req, res) => {
   res.json(order.toJSON());
 });
 
-// Только супер админ подтверждает реальное поступление перевода — деньги
-// приходят на его личные реквизиты вне зависимости от того, чей это товар.
+// Деньги всегда приходят на личные реквизиты супер админа, но подтвердить
+// перевод (по фото квитанции) может и сам продавец/коллега по магазину —
+// кто первый увидел и подтвердил, тот и подтвердил, заказ сразу закрывается.
 router.patch('/:id/confirm-payment', requireAuth, async (req, res) => {
-  if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Подтверждать оплату может только супер админ' });
-
   const order = await Order.findById(req.params.id);
   if (!order) return res.status(404).json({ error: 'Заказ не найден' });
+  if (!canManage(req.user, order)) return res.status(403).json({ error: 'Это не ваш заказ' });
   if (order.status !== 'payment_review') return res.status(400).json({ error: 'Заказ не ожидает подтверждения оплаты' });
 
   order.status = 'completed';

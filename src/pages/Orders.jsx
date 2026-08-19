@@ -18,6 +18,18 @@ const FULFILLMENT_LABELS = {
   reserve: '🏬 Бронирование',
 };
 
+function DeliveryAddress({ address }) {
+  const urlMatch = address.match(/https?:\/\/\S+/);
+  if (!urlMatch) return <div className="pay-sub">📍 {address}</div>;
+  const [url] = urlMatch;
+  const before = address.slice(0, urlMatch.index).trim();
+  return (
+    <div className="pay-sub">
+      📍 {before} <a href={url} target="_blank" rel="noreferrer">Открыть на карте</a>
+    </div>
+  );
+}
+
 function OrderCard({ order, children }) {
   return (
     <div className="cart-item" style={{ flexWrap: 'wrap', gap: 12 }}>
@@ -29,6 +41,9 @@ function OrderCard({ order, children }) {
             <div key={i}>{it.title} × {it.qty}</div>
           ))}
         </div>
+        {order.fulfillment === 'delivery' && order.deliveryAddress ? (
+          <DeliveryAddress address={order.deliveryAddress} />
+        ) : null}
         <div className="pay-sub"><strong>{STATUS_LABELS[order.status] || order.status}</strong></div>
       </div>
       <div className="cart-item-price" style={{ flex: '0 0 auto' }}>
@@ -59,7 +74,6 @@ export default function Orders() {
     );
   }
 
-  const isSuperadmin = currentUser.role === 'superadmin';
   const isSellerRole = ['seller', 'admin', 'superadmin'].includes(currentUser.role);
 
   async function handleStock(id, inStock) {
@@ -164,7 +178,7 @@ export default function Orders() {
                     </button>
                   </>
                 ) : null}
-                {order.status === 'payment_review' && isSuperadmin ? (
+                {order.status === 'payment_review' ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
                     {order.receiptImage ? (
                       <a href={order.receiptImage} target="_blank" rel="noreferrer">

@@ -90,11 +90,11 @@ export function OrdersProvider({ children }) {
   }, [serverMode, currentUser, refresh]);
 
   const createOrders = useCallback(
-    async (items, fulfillment) => {
+    async (items, fulfillment, address) => {
       if (!currentUser) throw new Error('Нужен вход, чтобы оформить заказ');
 
       if (serverMode) {
-        const created = await api.createOrders(items, fulfillment);
+        const created = await api.createOrders(items, fulfillment, address);
         await refresh();
         return created;
       }
@@ -117,6 +117,7 @@ export function OrdersProvider({ children }) {
         items: group.items,
         total: group.items.reduce((sum, it) => sum + it.price * it.qty, 0),
         fulfillment,
+        deliveryAddress: fulfillment === 'delivery' ? address || null : null,
         status: 'pending_stock',
         receiptFileName: null,
         createdAt: now,
