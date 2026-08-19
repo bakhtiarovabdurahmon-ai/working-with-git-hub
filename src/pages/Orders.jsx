@@ -90,8 +90,13 @@ export default function Orders() {
     await markPaid(payOrder.id, receiptFileName, receiptImage);
   }
 
-  const pendingOrder = myOrders.find((o) => o.status === 'pending_stock');
+  const pendingStockOrder = myOrders.find((o) => o.status === 'pending_stock');
+  const pendingPaymentOrder = myOrders.find((o) => o.status === 'payment_review');
+  const pendingOrder = pendingStockOrder || pendingPaymentOrder;
   const showOverlay = !!pendingOrder && !overlayDismissed;
+  const overlayText = pendingStockOrder
+    ? 'Проверка товара на наличие — это может занять несколько минут'
+    : 'Оплата на проверке у супер админа — это может занять некоторое время';
 
   return (
     <main className="container">
@@ -105,7 +110,7 @@ export default function Orders() {
               <span /><span /><span /><span /><span />
             </div>
             <div className="stock-check-text">
-              Проверка товара на наличие — это может занять несколько минут
+              {overlayText}
             </div>
             <button className="pay-ghost-btn" type="button" onClick={() => setOverlayDismissed(true)}>
               Скрыть
