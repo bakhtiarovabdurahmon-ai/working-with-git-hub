@@ -33,6 +33,7 @@ export default function Footer() {
           <h4>Контакты</h4>
           <ul>
             <li>+996 555 03 13 11</li>
+            <li>bakhtiarovabdurahmon@gmail.com</li>
           </ul>
         </div>
       </div>
