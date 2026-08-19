@@ -1,11 +1,80 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth, ROLE_LABELS } from '../auth.jsx';
 import { useStore, formatPrice } from '../store.jsx';
+import { api } from '../api.js';
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Дневной отчёт супер админа: сумма завершённых заказов за день и 15%
+// комиссии сайта с неё, плюс отдельный калькулятор для любой другой суммы.
+function DailyReportSection() {
+  const [date, setDate] = useState(todayStr());
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [calcInput, setCalcInput] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    api
+      .getDailyReport(date)
+      .then((r) => !cancelled && setReport(r))
+      .catch((err) => !cancelled && setError(err.message))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
+
+  const calcNum = Number(calcInput) || 0;
+
+  return (
+    <section className="section">
+      <div className="section-title"><span>Дневной отчёт (15% комиссии сайта)</span></div>
+      <div className="form-row" style={{ maxWidth: 220 }}>
+        <label className="form-label">Дата</label>
+        <input className="form-input" type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayStr()} />
+      </div>
+
+      {error ? <div className="form-error">{error}</div> : null}
+      {loading ? (
+        <p className="pay-sub">Загрузка…</p>
+      ) : report ? (
+        <div className="pay-amount" style={{ maxWidth: 360 }}>
+          <div className="pay-amount-label">Завершённых заказов за {report.date}: {report.ordersCount}</div>
+          <div className="pay-receipt-line"><span>Общая сумма продаж</span><span>{formatPrice(report.totalSales)}</span></div>
+          <div className="pay-receipt-line total"><span>Комиссия сайта (15%)</span><span>{formatPrice(report.commission)}</span></div>
+        </div>
+      ) : null}
+
+      <div className="form-row" style={{ maxWidth: 320, marginTop: 20 }}>
+        <label className="form-label">Калькулятор: 15% от любой суммы</label>
+        <input
+          className="form-input"
+          type="number"
+          min="0"
+          value={calcInput}
+          onChange={(e) => setCalcInput(e.target.value)}
+          placeholder="Введите сумму, сом"
+        />
+        {calcInput ? (
+          <p className="pay-sub" style={{ marginTop: 8 }}>
+            15% от {formatPrice(calcNum)} = <strong>{formatPrice(Math.round(calcNum * 0.15))}</strong>
+          </p>
+        ) : null}
+      </div>
+    </section>
+  );
+}
 
 export default function Admin() {
   const { currentUser, users, shops, setRole, promoteByCode, createShop, assignToShop, serverMode } = useAuth();
-  const { customProducts, removeProduct } = useStore();
+  const { removeMyStock, serverMode: storeServerMode } = useStore();
   const [actionError, setActionError] = useState(null);
   const [promoteCode, setPromoteCode] = useState('');
   const [promoteError, setPromoteError] = useState(null);
@@ -20,6 +89,25 @@ export default function Admin() {
   const [assignError, setAssignError] = useState(null);
   const [assignNotice, setAssignNotice] = useState(null);
 
+  const [stockList, setStockList] = useState([]);
+  const [stockLoading, setStockLoading] = useState(true);
+
+  useEffect(() => {
+    if (!storeServerMode) {
+      setStockLoading(false);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getAllStock()
+      .then((list) => !cancelled && setStockList(list))
+      .catch(() => {})
+      .finally(() => !cancelled && setStockLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [storeServerMode]);
+
   async function handleRoleChange(email, role) {
     setActionError(null);
     try {
@@ -29,10 +117,11 @@ export default function Admin() {
     }
   }
 
-  async function handleRemoveProduct(id) {
+  async function handleRemoveStock(stockId) {
     setActionError(null);
     try {
-      await removeProduct(id);
+      await removeMyStock(stockId);
+      setStockList((prev) => prev.filter((s) => s.id !== stockId));
     } catch (err) {
       setActionError(err.message);
     }
@@ -113,6 +202,8 @@ export default function Admin() {
         {serverMode ? '🟢 Данные хранятся на сервере (MongoDB), общие для всех посетителей.' : '🟡 Автономный режим: данные только в этом браузере.'}
       </p>
       {actionError ? <div className="form-error">{actionError}</div> : null}
+
+      {isSuperadmin && storeServerMode ? <DailyReportSection /> : null}
 
       {isSuperadmin ? (
         <section className="section">
@@ -210,6 +301,7 @@ export default function Admin() {
                 <th>Email</th>
                 <th>ID</th>
                 <th>Магазин</th>
+                <th>Смена</th>
                 <th>Роль</th>
               </tr>
             </thead>
@@ -225,6 +317,7 @@ export default function Admin() {
                     <td>{u.email}</td>
                     <td>{u.code || '—'}</td>
                     <td>{u.shopId ? (shopNameById[u.shopId] || '—') : '—'}</td>
+                    <td>{u.role === 'seller' ? (u.onShift === false ? '🔴 закрыта' : '🟢 открыта') : '—'}</td>
                     <td>
                       {canEdit ? (
                         <select
@@ -252,41 +345,49 @@ export default function Admin() {
         </p>
       </section>
 
-      <section className="section">
-        <div className="section-title"><span>Товары, добавленные продавцами ({customProducts.length})</span></div>
-        {customProducts.length === 0 ? (
-          <p className="pay-sub">Пока никто ничего не добавил.</p>
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Товар</th>
-                  <th>Продавец</th>
-                  <th>Магазин</th>
-                  <th>Цена</th>
-                  <th>Кол-во</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {customProducts.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.title}</td>
-                    <td>{p.sellerEmail || '—'}</td>
-                    <td>{p.shopId ? (shopNameById[p.shopId] || '—') : '—'}</td>
-                    <td>{formatPrice(p.price)}</td>
-                    <td>{p.qty}</td>
-                    <td>
-                      <button type="button" className="user-bar-btn" onClick={() => handleRemoveProduct(p.id)}>Удалить</button>
-                    </td>
+      {storeServerMode ? (
+        <section className="section">
+          <div className="section-title"><span>Сток по товарам ({stockList.length})</span></div>
+          <p className="pay-sub">
+            Один товар (карточка) может продавать сразу несколько магазинов — каждая строка ниже это сток одного
+            магазина по одной карточке.
+          </p>
+          {stockLoading ? (
+            <p className="pay-sub">Загрузка…</p>
+          ) : stockList.length === 0 ? (
+            <p className="pay-sub">Пока никто ничего не добавил.</p>
+          ) : (
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Товар</th>
+                    <th>Продавец</th>
+                    <th>Магазин</th>
+                    <th>Код</th>
+                    <th>Размеры/остаток</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+                </thead>
+                <tbody>
+                  {stockList.map((s) => (
+                    <tr key={s.id}>
+                      <td>{s.product?.title || '—'}</td>
+                      <td>{s.sellerEmail}</td>
+                      <td>{s.shopId ? (shopNameById[s.shopId] || '—') : '—'}</td>
+                      <td>{s.code}</td>
+                      <td>{s.sizes.map((sz) => `${sz.size}×${sz.qty}`).join(', ')}</td>
+                      <td>
+                        <button type="button" className="user-bar-btn" onClick={() => handleRemoveStock(s.id)}>Удалить</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
     </main>
   );
 }

@@ -14,6 +14,11 @@ const userSchema = new mongoose.Schema({
   // человека) могут состоять в одном магазине и вместе подтверждать заказы
   // друг друга. null = не назначен ни в какой магазин.
   shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
+  // Личная "смена" продавца — если выключена, заказы на его сток не
+  // маршрутизируются (см. server/routes/orders.js), и покупателю показывается
+  // сообщение "сотрудники не работают". По умолчанию включена (не меняет
+  // поведение для тех, кто ей не пользуется).
+  onShift: { type: Boolean, default: true },
 });
 
 // Defense in depth: even if a route accidentally serializes the full

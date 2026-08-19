@@ -38,7 +38,7 @@ function OrderCard({ order, children }) {
         <div className="cart-item-brand">{FULFILLMENT_LABELS[order.fulfillment]} · {order.buyerName || order.buyerEmail}</div>
         <div className="pay-sub" style={{ margin: '4px 0' }}>
           {order.items.map((it, i) => (
-            <div key={i}>{it.title} × {it.qty}</div>
+            <div key={i}>{it.title}{it.size ? `, размер ${it.size}` : ''} × {it.qty}</div>
           ))}
         </div>
         {order.fulfillment === 'delivery' && order.deliveryAddress ? (

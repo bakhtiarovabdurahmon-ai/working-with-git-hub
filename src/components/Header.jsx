@@ -13,7 +13,19 @@ export default function Header() {
   const [navOpen, setNavOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const { cartCount, favoritesCount, allProducts } = useStore();
-  const { currentUser, logout, isSeller, isAdmin } = useAuth();
+  const { currentUser, logout, isSeller, isAdmin, toggleShift } = useAuth();
+  const [shiftBusy, setShiftBusy] = useState(false);
+
+  async function handleToggleShift() {
+    setShiftBusy(true);
+    try {
+      await toggleShift(!currentUser.onShift);
+    } catch (e) {
+      // best-effort — сети/ошибке не даём поломать остальной хедер
+    } finally {
+      setShiftBusy(false);
+    }
+  }
   const { theme, toggleTheme } = useTheme();
 
   const promoItems = allProducts.filter((p) => p.discount >= 20).slice(0, 12);
@@ -88,9 +100,21 @@ export default function Header() {
               </span>
             </span>
             {isSeller ? (
-              <button type="button" className="user-bar-btn user-bar-btn-primary" onClick={() => setAddOpen(true)}>
-                + Добавить товар
-              </button>
+              <>
+                <button type="button" className="user-bar-btn user-bar-btn-primary" onClick={() => setAddOpen(true)}>
+                  + Добавить товар
+                </button>
+                <button
+                  type="button"
+                  className="user-bar-btn"
+                  style={{ background: currentUser.onShift === false ? 'var(--danger)' : 'var(--success)', color: '#fff' }}
+                  disabled={shiftBusy}
+                  onClick={handleToggleShift}
+                  title="Пока смена закрыта, заказы к вам не приходят"
+                >
+                  {currentUser.onShift === false ? '🔴 Смена закрыта' : '🟢 На смене'}
+                </button>
+              </>
             ) : null}
             <Link to="/orders" className="user-bar-btn">Заказы</Link>
             {isAdmin ? (
