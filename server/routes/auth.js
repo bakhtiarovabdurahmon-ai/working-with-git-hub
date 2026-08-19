@@ -21,8 +21,11 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 // guessing against the same code for the rest of its 10-minute lifetime.
 const MAX_VERIFY_ATTEMPTS = 5;
 
+// crypto.randomInt (not Math.random) — this code is a real credential, not
+// just a display id, so it needs to be unpredictable to an attacker who
+// might know the PRNG's other outputs.
 function generateCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 router.post('/request-code', requestCodeLimiter, async (req, res) => {
