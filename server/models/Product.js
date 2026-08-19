@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 
+// Продукт — это ОДНА общая карточка на весь сайт (то, что видит покупатель),
+// а не собственность одного магазина. Кто именно продаёт её и сколько у
+// кого есть на складе — в ProductStock (несколько магазинов могут стоять за
+// одной карточкой, у каждого свой сток и свой код, см. server/routes/products.js).
 const productSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -14,15 +18,10 @@ const productSchema = new mongoose.Schema(
     image: { type: String, default: null },
     color: { type: String, default: '#f4f4f6' },
     description: { type: String, default: '' },
+    // Размеры, в которых этот товар когда-либо заводили на склад хотя бы
+    // одним магазином — растёт, когда новый магазин присоединяется со своим
+    // стоком нового размера (см. POST /api/products/:id/stock).
     sizes: { type: [String], default: [] },
-    qty: { type: Number, default: 0 },
-    inStock: { type: Boolean, default: true },
-    sellerEmail: { type: String, default: null },
-    // Магазин, к которому привязан товар (если продавец состоит в магазине) —
-    // заказы на такой товар видят все сотрудники магазина, а не только тот,
-    // кто его добавил. null = товар вне магазина (общий каталог или продавец
-    // без магазина).
-    shopId: { type: mongoose.Schema.Types.ObjectId, ref: 'Shop', default: null },
   },
   { timestamps: true }
 );

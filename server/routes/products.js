@@ -1,31 +1,109 @@
 import { Router } from 'express';
 import Product from '../models/Product.js';
+import ProductStock from '../models/ProductStock.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { generateUniqueCode } from '../lib/codes.js';
 
 const router = Router();
 
+// Собирает карточки товаров + агрегированный сток по каждой (сумма qty по
+// размеру среди ВСЕХ магазинов, которые стоят за этой карточкой) — именно
+// это покупатель видит как "размер есть/нет", не зная, у кого конкретно.
+async function attachAggregatedStock(products) {
+  const ids = products.map((p) => p._id);
+  const stocks = await ProductStock.find({ productId: { $in: ids }, active: true });
+  const bySizeByProduct = new Map();
+  for (const stock of stocks) {
+    const key = String(stock.productId);
+    const sizeMap = bySizeByProduct.get(key) || new Map();
+    for (const s of stock.sizes) {
+      sizeMap.set(s.size, (sizeMap.get(s.size) || 0) + s.qty);
+    }
+    bySizeByProduct.set(key, sizeMap);
+  }
+  return products.map((p) => {
+    const json = p.toJSON();
+    const sizeMap = bySizeByProduct.get(String(p._id)) || new Map();
+    const sizeStock = Object.fromEntries(sizeMap);
+    json.sizeStock = sizeStock;
+    json.inStock = Object.values(sizeStock).some((qty) => qty > 0);
+    return json;
+  });
+}
+
 router.get('/', async (req, res) => {
   const products = await Product.find({}).sort({ createdAt: -1 });
-  res.json(products.map((p) => p.toJSON()));
+  res.json(await attachAggregatedStock(products));
 });
 
+// Поиск существующих карточек по названию — продавец использует это, чтобы
+// присоединить свой сток к уже существующему товару, а не плодить дубликаты
+// одной и той же вещи с разными карточками.
+router.get('/search', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const q = String(req.query.q || '').trim();
+  if (!q) return res.json([]);
+  const products = await Product.find({ title: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } })
+    .sort({ createdAt: -1 })
+    .limit(10);
+  res.json(await attachAggregatedStock(products));
+});
+
+// Все стоковые строки текущего продавца — чтобы он видел и мог редактировать
+// свои остатки по каждой карточке, которую он завёл сам или присоединился к чужой.
+router.get('/stock/mine', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const stocks = await ProductStock.find({ sellerEmail: req.user.email }).sort({ createdAt: -1 });
+  const productIds = stocks.map((s) => s.productId);
+  const products = await Product.find({ _id: { $in: productIds } });
+  const productById = new Map(products.map((p) => [String(p._id), p.toJSON()]));
+  res.json(
+    stocks.map((s) => ({
+      ...s.toJSON(),
+      product: productById.get(String(s.productId)) || null,
+    }))
+  );
+});
+
+// Все стоковые строки — для админ-панели (кто что продаёт и сколько).
+router.get('/stock', requireAuth, requireRole('admin', 'superadmin'), async (req, res) => {
+  const stocks = await ProductStock.find({}).sort({ createdAt: -1 });
+  const productIds = stocks.map((s) => s.productId);
+  const products = await Product.find({ _id: { $in: productIds } });
+  const productById = new Map(products.map((p) => [String(p._id), p.toJSON()]));
+  res.json(
+    stocks.map((s) => ({
+      ...s.toJSON(),
+      product: productById.get(String(s.productId)) || null,
+    }))
+  );
+});
+
+function parseSizes(input) {
+  if (!Array.isArray(input)) return null;
+  const sizes = [];
+  for (const row of input) {
+    const size = String(row?.size || '').trim();
+    const qty = Number(row?.qty);
+    if (!size || !Number.isFinite(qty) || qty < 0) return null;
+    sizes.push({ size, qty });
+  }
+  return sizes;
+}
+
+// Новая карточка товара + первая стоковая строка (тот, кто создаёт —
+// первый продавец на ней).
 router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
   try {
     const title = String(req.body.title || '').trim();
     const category = String(req.body.category || '').trim();
     const priceNum = Number(req.body.price);
     const discountNum = Number(req.body.discount) || 0;
-    const qtyNum = Number(req.body.qty) || 0;
+    const sizes = parseSizes(req.body.sizes);
     if (!title) return res.status(400).json({ error: 'Укажите название товара' });
     if (!category) return res.status(400).json({ error: 'Укажите категорию' });
     if (!Number.isFinite(priceNum) || priceNum <= 0) return res.status(400).json({ error: 'Некорректная цена' });
     if (discountNum < 0 || discountNum > 90) return res.status(400).json({ error: 'Скидка должна быть от 0 до 90%' });
-    if (qtyNum < 0) return res.status(400).json({ error: 'Некорректное количество' });
+    if (!sizes || sizes.length === 0) return res.status(400).json({ error: 'Укажите хотя бы один размер и количество' });
 
-    // Whitelisted fields only — never spread req.body directly into
-    // Product.create, since that would let a raw API call set things like
-    // rating/reviews (fake social proof) or an oldPrice unrelated to the
-    // real discount (a fake strike-through price).
     const oldPrice = discountNum > 0 ? Math.round(priceNum / (1 - discountNum / 100)) : null;
     const product = await Product.create({
       title,
@@ -38,29 +116,90 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
       image: typeof req.body.image === 'string' ? req.body.image : null,
       color: typeof req.body.color === 'string' ? req.body.color : undefined,
       description: req.body.description ? String(req.body.description).trim() : '',
-      sizes: Array.isArray(req.body.sizes) ? req.body.sizes.map(String) : [],
-      qty: qtyNum,
-      inStock: qtyNum > 0,
-      // The seller (and their shop) is whoever is authenticated, never a
-      // client-supplied value.
+      sizes: sizes.map((s) => s.size),
+    });
+
+    const code = await generateUniqueCode(ProductStock);
+    await ProductStock.create({
+      productId: product._id,
       sellerEmail: req.user.email,
       shopId: req.user.shopId || null,
+      code,
+      sizes,
     });
-    res.status(201).json(product.toJSON());
+
+    const [withStock] = await attachAggregatedStock([product]);
+    res.status(201).json(withStock);
   } catch (err) {
     res.status(400).json({ error: 'Не удалось сохранить товар' });
   }
 });
 
-router.delete('/:id', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+// Присоединить свой сток к уже существующей карточке (другой магазин тоже
+// продаёт тот же товар) — карточка остаётся одна, покупатель видит один товар.
+router.post('/:id/stock', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) return res.status(404).json({ error: 'Товар не найден' });
-  const isStaff = req.user.role === 'admin' || req.user.role === 'superadmin';
-  const sameShop = req.user.shopId && product.shopId && String(product.shopId) === String(req.user.shopId);
-  if (!isStaff && !sameShop && product.sellerEmail !== req.user.email) {
-    return res.status(403).json({ error: 'Можно удалять только товары своего магазина' });
+
+  const sizes = parseSizes(req.body.sizes);
+  if (!sizes || sizes.length === 0) return res.status(400).json({ error: 'Укажите хотя бы один размер и количество' });
+
+  const already = await ProductStock.findOne({ productId: product._id, sellerEmail: req.user.email });
+  if (already) return res.status(400).json({ error: 'У вас уже есть сток по этому товару — отредактируйте его вместо создания нового' });
+
+  const code = await generateUniqueCode(ProductStock);
+  const stock = await ProductStock.create({
+    productId: product._id,
+    sellerEmail: req.user.email,
+    shopId: req.user.shopId || null,
+    code,
+    sizes,
+  });
+
+  const newSizes = sizes.map((s) => s.size).filter((s) => !product.sizes.includes(s));
+  if (newSizes.length > 0) {
+    product.sizes = [...product.sizes, ...newSizes];
+    await product.save();
   }
-  await product.deleteOne();
+
+  res.status(201).json(stock.toJSON());
+});
+
+function canManageStock(user, stock) {
+  if (user.role === 'admin' || user.role === 'superadmin') return true;
+  if (user.shopId && stock.shopId && String(stock.shopId) === String(user.shopId)) return true;
+  return stock.sellerEmail === user.email;
+}
+
+// Обновить свои остатки по размерам (пополнение склада).
+router.patch('/stock/:stockId', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const stock = await ProductStock.findById(req.params.stockId);
+  if (!stock) return res.status(404).json({ error: 'Сток не найден' });
+  if (!canManageStock(req.user, stock)) return res.status(403).json({ error: 'Можно менять только свой сток' });
+
+  const sizes = parseSizes(req.body.sizes);
+  if (!sizes || sizes.length === 0) return res.status(400).json({ error: 'Укажите хотя бы один размер и количество' });
+  stock.sizes = sizes;
+  await stock.save();
+
+  const product = await Product.findById(stock.productId);
+  if (product) {
+    const newSizes = sizes.map((s) => s.size).filter((s) => !product.sizes.includes(s));
+    if (newSizes.length > 0) {
+      product.sizes = [...product.sizes, ...newSizes];
+      await product.save();
+    }
+  }
+
+  res.json(stock.toJSON());
+});
+
+// Удалить свой сток (карточка остаётся, если её продают другие магазины).
+router.delete('/stock/:stockId', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const stock = await ProductStock.findById(req.params.stockId);
+  if (!stock) return res.status(404).json({ error: 'Сток не найден' });
+  if (!canManageStock(req.user, stock)) return res.status(403).json({ error: 'Можно удалять только свой сток' });
+  await stock.deleteOne();
   res.status(204).end();
 });
 
