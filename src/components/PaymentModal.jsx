@@ -7,38 +7,19 @@
 // платежей требует регистрации бизнеса и интеграции с платёжным
 // провайдером/онлайн-кассой (54-ФЗ) — здесь этого нет.
 
-import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
+import { useRef, useState } from 'react';
 import { formatPrice } from '../store.jsx';
+import optimaQr from '../assets/optima-qr.jpg';
 
-// Реальные реквизиты получателя.
-//
-// QR здесь кодирует просто номер телефона как текст (не банковский
-// платёжный код) — у нас нет точных данных, зашитых в фирменный QR банка
-// (включая контрольную сумму), а угадывать их нельзя: неверный QR отправит
-// перевод в никуда. Отсканировав этот QR, покупатель видит номер и переводит
-// вручную через своё банковское приложение — так же надёжно, просто удобнее.
+// Реальные реквизиты получателя — QR ниже сгенерирован официальным
+// приложением Optima Bank (OptimaQR/ELQR) владельцем счёта и загружен как
+// статичный файл as-is (src/assets/optima-qr.jpg). Мы не генерируем и не
+// подделываем банковский QR сами — неверно собранный QR отправит перевод в
+// никуда, а этот код настоящий и сканируется банковским приложением напрямую.
 const DEMO_RECIPIENT = {
   phone: '559 610 059',
   name: 'АБДУЛЛА Т.',
 };
-
-function PhoneQr({ phone }) {
-  const [src, setSrc] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    QRCode.toDataURL('+996 ' + phone, { width: 200, margin: 1 }).then((url) => {
-      if (!cancelled) setSrc(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [phone]);
-
-  if (!src) return <div className="qr-mock" />;
-  return <img src={src} alt="QR с номером телефона получателя" className="qr-real" />;
-}
 
 export default function PaymentModal({ order, onClose, onPaid }) {
   const [step, setStep] = useState('details');
@@ -99,13 +80,13 @@ export default function PaymentModal({ order, onClose, onPaid }) {
           <>
             <div className="pay-eyebrow">Оплата заказа {order.orderNumber}</div>
             <h2 className="pay-title">Переведите по реквизитам</h2>
-            <span className="pay-demo-flag">⚠ Демо-режим: подтверждение перевода делает супер админ вручную — сам перевод по номеру телефона настоящий</span>
+            <span className="pay-demo-flag">⚠ Подтверждение перевода делает супер админ вручную — сам перевод по QR настоящий</span>
             <div className="pay-amount">
               <div className="pay-amount-label">Сумма к оплате</div>
               <div className="pay-amount-value">{formatPrice(order.total)}</div>
             </div>
-            <PhoneQr phone={DEMO_RECIPIENT.phone} />
-            <div className="qr-note">Отсканируйте QR, чтобы получить номер получателя, и переведите вручную через приложение банка (Optima Bank / любой банк с переводом по номеру)</div>
+            <img src={optimaQr} alt="QR для перевода Optima Bank" className="qr-real" />
+            <div className="qr-note">Отсканируйте QR банковским приложением (Optima Bank или любым другим с поддержкой QR-переводов) и переведите нужную сумму</div>
             <div className="pay-row">
               <div>
                 <div className="pay-row-k">Телефон получателя</div>

@@ -1265,8 +1265,9 @@ a {
 
 .qr-real {
   display: block;
-  width: 168px;
-  height: 168px;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
   margin: 0 auto 8px;
   border-radius: 14px;
   background: #fff;
