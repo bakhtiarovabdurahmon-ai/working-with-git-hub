@@ -5,7 +5,6 @@ import { useAuth } from '../auth.jsx';
 import { api } from '../api.js';
 
 const MAX_IMAGE_SIDE = 640;
-const MAX_IMAGES = 4;
 
 function resizeImageToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -136,7 +135,6 @@ export default function AddProductModal({ onClose }) {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // позволяет выбрать тот же файл ещё раз (например, сфотографировать снова)
     if (!file) return;
-    if (imagesData.length >= MAX_IMAGES) return;
     setImageError(null);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
@@ -308,7 +306,7 @@ export default function AddProductModal({ onClose }) {
             <SizeQtyPicker availableSizes={availableSizes} sizeQty={sizeQty} onChange={setSizeQty} />
 
             <div className="form-row">
-              <label className="form-label">Фото товара (необязательно, до {MAX_IMAGES})</label>
+              <label className="form-label">Фото товара (необязательно, без ограничений)</label>
               <div className="image-picker-grid">
                 {imagesData.map((src, i) => (
                   <div className="image-picker-thumb" key={i}>
@@ -318,13 +316,11 @@ export default function AddProductModal({ onClose }) {
                     </button>
                   </div>
                 ))}
-                {imagesData.length < MAX_IMAGES ? (
-                  <label className="pay-upload-box has-file image-picker-add">
-                    <span className="pay-upload-icon">📷</span>
-                    <span>Добавить фото ({imagesData.length}/{MAX_IMAGES})</span>
-                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
-                  </label>
-                ) : null}
+                <label className="pay-upload-box has-file image-picker-add">
+                  <span className="pay-upload-icon">📷</span>
+                  <span>{imagesData.length > 0 ? `Добавить ещё (${imagesData.length})` : 'Добавить фото'}</span>
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
+                </label>
               </div>
               <p className="pay-sub">Сфотографируйте товар с разных ракурсов — все фото увидят покупатели на странице товара.</p>
               {imageError ? <div className="form-error">{imageError}</div> : null}

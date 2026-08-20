@@ -93,16 +93,15 @@ function parseSizes(input) {
   return sizes;
 }
 
-const MAX_PRODUCT_IMAGES = 4;
-
-// До 4 фото на карточку — продавец фотографирует товар с разных ракурсов.
-// Каждая картинка уже уменьшена и сжата на клиенте (см. resizeImageToDataUrl
-// в AddProductModal.jsx), так что здесь просто ограничиваем количество и
-// подстраховываемся на случай подделанного запроса без ресайза.
+// Фото на карточку — без ограничения по количеству, продавец может
+// сфотографировать товар с любого числа ракурсов. Каждая картинка уже
+// уменьшена и сжата на клиенте (см. resizeImageToDataUrl в
+// AddProductModal.jsx), здесь только подстраховываемся на случай
+// подделанного запроса без ресайза (иначе одна гигантская "картинка" могла
+// бы забить всю квоту тела запроса).
 function parseImages(input) {
   if (input === undefined || input === null) return [];
   if (!Array.isArray(input)) return null;
-  if (input.length > MAX_PRODUCT_IMAGES) return null;
   for (const img of input) {
     if (typeof img !== 'string' || !img.startsWith('data:image/') || img.length > 2_000_000) return null;
   }
@@ -125,7 +124,7 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
     if (!sizes || sizes.length === 0) return res.status(400).json({ error: 'Укажите хотя бы один размер и количество' });
 
     const images = parseImages(req.body.images);
-    if (images === null) return res.status(400).json({ error: `Можно приложить не больше ${MAX_PRODUCT_IMAGES} фото` });
+    if (images === null) return res.status(400).json({ error: 'Не удалось сохранить фото — попробуйте другое изображение' });
     const cover = images[0] || (typeof req.body.image === 'string' ? req.body.image : null);
 
     const oldPrice = discountNum > 0 ? Math.round(priceNum / (1 - discountNum / 100)) : null;

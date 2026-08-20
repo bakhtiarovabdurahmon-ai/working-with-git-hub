@@ -58,7 +58,9 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '5mb' })); // seller product photos are inlined as data URLs
+// Товар теперь можно фотографировать без ограничения по числу фото —
+// поднимаем лимит тела запроса, чтобы большая галерея не отклонялась.
+app.use(express.json({ limit: '25mb' }));
 
 // Generous IP-wide floor on top of the tighter per-route limiters in
 // routes/auth.js and routes/orders.js — those guard specific abuse-prone
