@@ -255,21 +255,24 @@ export default function AddProductModal({ onClose }) {
               {searchResults.length > 0 ? (
                 <div className="admin-table-wrap" style={{ marginTop: 8 }}>
                   <p className="pay-sub">Похожие товары уже есть в каталоге — если это тот же товар, присоединитесь вместо создания дубля:</p>
-                  {searchResults.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="pay-ghost-btn"
-                      style={{ display: 'block', width: '100%', textAlign: 'left' }}
-                      onClick={() => {
-                        setJoinedProduct(p);
-                        setSizeQty({});
-                        setSearchResults([]);
-                      }}
-                    >
-                      {p.title} — {formatPrice(p.price)}
-                    </button>
-                  ))}
+                  {searchResults.map((p) => {
+                    const totalQty = Object.values(p.sizeStock || {}).reduce((sum, q) => sum + q, 0);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className="pay-ghost-btn"
+                        style={{ display: 'block', width: '100%', textAlign: 'left' }}
+                        onClick={() => {
+                          setJoinedProduct(p);
+                          setSizeQty({});
+                          setSearchResults([]);
+                        }}
+                      >
+                        {p.title} — {formatPrice(p.price)} · {totalQty} шт{p.archived ? ' · распродано' : ''}
+                      </button>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>

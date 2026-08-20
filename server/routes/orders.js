@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { sendOrderNotification } from '../lib/mailer.js';
 import { rateLimit } from '../middleware/rateLimit.js';
+import { refreshArchiveStatus } from '../lib/archive.js';
 
 const router = Router();
 // Caps order-creation spam (each order emails the shop) — keyed per
@@ -171,6 +172,17 @@ router.post('/', requireAuth, createOrderLimiter, async (req, res) => {
         notifyEmails = [group.stock.sellerEmail];
       }
       notifyEmails.forEach((email) => sendOrderNotification(email, order).catch(() => {}));
+    }
+
+    // Заказ мог опустошить чей-то остаток до нуля по всем размерам сразу —
+    // проверяем архивацию карточки для каждого затронутого товара.
+    const affectedProductIds = new Set();
+    for (const group of groups.values()) {
+      for (const it of group.items) affectedProductIds.add(it.productId);
+    }
+    for (const pid of affectedProductIds) {
+      // eslint-disable-next-line no-await-in-loop
+      await refreshArchiveStatus(pid);
     }
 
     res.status(201).json(created.map((o) => o.toJSON()));

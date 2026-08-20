@@ -12,6 +12,7 @@ import { useAuth } from './auth.jsx';
 const CART_KEY = 'wb_clone_cart';
 const FAV_KEY = 'wb_clone_favorites';
 const CUSTOM_PRODUCTS_KEY = 'wb_clone_custom_products';
+const REVIEWS_KEY = 'wb_clone_reviews';
 
 function readStore(key, fallback = {}) {
   try {
@@ -54,7 +55,7 @@ function cartKey(productId, size) {
 const StoreContext = createContext(null);
 
 export function StoreProvider({ children }) {
-  const { isSeller } = useAuth();
+  const { isSeller, currentUser } = useAuth();
   const [cart, setCart] = useState(() => readStore(CART_KEY));
   const [favorites, setFavorites] = useState(() => readStore(FAV_KEY));
   const [customProducts, setCustomProducts] = useState([]);
@@ -169,6 +170,51 @@ export function StoreProvider({ children }) {
     [serverMode, loadProducts, loadMyStock]
   );
 
+  // Разовая продажа "вживую" по одному размеру своего стока — на 1 штуку за
+  // клик. Когда сток по карточке кончается, сервер сам прячет её из
+  // каталога (см. server/lib/archive.js), поэтому здесь достаточно
+  // перезагрузить списки.
+  const sellSize = useCallback(
+    async (stockId, size) => {
+      if (!serverMode) throw new Error('Быстрая продажа доступна только на сервере');
+      await api.sellSize(stockId, size);
+      await Promise.all([loadProducts(), loadMyStock()]);
+    },
+    [serverMode, loadProducts, loadMyStock]
+  );
+
+  const getReviews = useCallback(
+    async (productId) => {
+      if (serverMode) return api.getProductReviews(productId);
+      const map = readStore(REVIEWS_KEY, {});
+      return (map[productId] || []).slice().reverse();
+    },
+    [serverMode]
+  );
+
+  const addReview = useCallback(
+    async (productId, rating, text) => {
+      if (serverMode) {
+        const created = await api.addProductReview(productId, rating, text);
+        await loadProducts();
+        return created;
+      }
+      const map = readStore(REVIEWS_KEY, {});
+      const list = map[productId] || [];
+      const review = {
+        id: 'rv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        authorName: currentUser?.name || currentUser?.email || 'Гость',
+        rating,
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      map[productId] = [...list, review];
+      writeStore(REVIEWS_KEY, map);
+      return review;
+    },
+    [serverMode, currentUser, loadProducts]
+  );
+
   const allProducts = useMemo(() => [...customProducts, ...PRODUCTS], [customProducts]);
 
   const getProduct = useCallback((id) => allProducts.find((p) => p.id === id), [allProducts]);
@@ -248,6 +294,9 @@ export function StoreProvider({ children }) {
     joinStock,
     updateMyStock,
     removeMyStock,
+    sellSize,
+    getReviews,
+    addReview,
     myStock,
     myStockForProduct,
     getProduct,

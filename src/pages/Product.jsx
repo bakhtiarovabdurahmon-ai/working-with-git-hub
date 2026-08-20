@@ -5,12 +5,22 @@ import { useStore, formatPrice, isOrderable, sizeHasStock } from '../store.jsx';
 import { useAuth } from '../auth.jsx';
 import Stars from '../components/Stars.jsx';
 import ProductCard from '../components/ProductCard.jsx';
+import ReviewsSection from '../components/ReviewsSection.jsx';
 
 export default function Product() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isFavorite, toggleFavorite, addToCart, allProducts, getProduct, myStockForProduct, removeMyStock, serverMode } =
-    useStore();
+  const {
+    isFavorite,
+    toggleFavorite,
+    addToCart,
+    allProducts,
+    getProduct,
+    myStockForProduct,
+    removeMyStock,
+    sellSize,
+    serverMode,
+  } = useStore();
   const { isAdmin } = useAuth();
   const product = getProduct(id);
   const [qty, setQty] = useState(1);
@@ -18,6 +28,8 @@ export default function Product() {
   const [addedText, setAddedText] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [sellingSize, setSellingSize] = useState(null);
+  const [sellError, setSellError] = useState(null);
 
   useEffect(() => {
     if (product) document.title = product.title + ' — ОдеждаPRO';
@@ -64,6 +76,19 @@ export default function Product() {
     } catch (err) {
       setDeleteError(err.message);
       setDeleting(false);
+    }
+  }
+
+  async function handleSell(sellSizeValue) {
+    if (!myStock) return;
+    setSellError(null);
+    setSellingSize(sellSizeValue);
+    try {
+      await sellSize(myStock.id, sellSizeValue);
+    } catch (err) {
+      setSellError(err.message);
+    } finally {
+      setSellingSize(null);
     }
   }
 
@@ -148,12 +173,36 @@ export default function Product() {
             ) : null}
           </div>
           {deleteError ? <div className="form-error">{deleteError}</div> : null}
+          {myStock ? (
+            <div className="product-description">
+              <h3>Мой сток — быстрая продажа</h3>
+              <p className="pay-sub">Продали товар не через сайт (например, в магазине)? Отметьте размер — остаток сразу уменьшится.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {myStock.sizes.map((s) => (
+                  <div key={s.size} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ minWidth: 40 }}>{s.size}</span>
+                    <span className="pay-sub">{s.qty} шт</span>
+                    <button
+                      className="pay-ghost-btn"
+                      type="button"
+                      disabled={s.qty <= 0 || sellingSize === s.size}
+                      onClick={() => handleSell(s.size)}
+                    >
+                      {sellingSize === s.size ? 'Продаём…' : 'Продали'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {sellError ? <div className="form-error">{sellError}</div> : null}
+            </div>
+          ) : null}
           <div className="product-description">
             <h3>Описание</h3>
             <p>{product.description}</p>
           </div>
         </div>
       </div>
+      <ReviewsSection productId={product.id} />
       <div className="recommend-section">
         <h2>Похожие товары</h2>
         <div className="product-grid">

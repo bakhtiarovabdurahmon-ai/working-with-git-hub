@@ -68,6 +68,11 @@ export const api = {
   updateStock: (stockId, sizes) =>
     request(`/products/stock/${encodeURIComponent(stockId)}`, { method: 'PATCH', body: JSON.stringify({ sizes }) }),
   deleteStock: (stockId) => request(`/products/stock/${encodeURIComponent(stockId)}`, { method: 'DELETE' }),
+  sellSize: (stockId, size) =>
+    request(`/products/stock/${encodeURIComponent(stockId)}/sell`, { method: 'PATCH', body: JSON.stringify({ size }) }),
+  getProductReviews: (id) => request(`/products/${encodeURIComponent(id)}/reviews`),
+  addProductReview: (id, rating, text) =>
+    request(`/products/${encodeURIComponent(id)}/reviews`, { method: 'POST', body: JSON.stringify({ rating, text }) }),
   setShift: (onShift) => request('/users/me/shift', { method: 'PATCH', body: JSON.stringify({ onShift }) }),
   getDailyReport: (date) => request(`/orders/report${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   createOrders: (items, fulfillment, address) =>

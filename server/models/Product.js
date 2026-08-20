@@ -22,6 +22,11 @@ const productSchema = new mongoose.Schema(
     // одним магазином — растёт, когда новый магазин присоединяется со своим
     // стоком нового размера (см. POST /api/products/:id/stock).
     sizes: { type: [String], default: [] },
+    // true — распродана везде (сумма остатков по всем магазинам = 0).
+    // Карточка прячется из каталога, но не удаляется: её видно в поиске
+    // (см. GET /api/products/search) с количеством 0, чтобы можно было
+    // снова присоединить сток при поступлении.
+    archived: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

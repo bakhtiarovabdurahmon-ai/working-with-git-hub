@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import Product from '../models/Product.js';
 import ProductStock from '../models/ProductStock.js';
+import Review from '../models/Review.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { generateUniqueCode } from '../lib/codes.js';
+import { refreshArchiveStatus } from '../lib/archive.js';
 
 const router = Router();
 
@@ -32,7 +34,9 @@ async function attachAggregatedStock(products) {
 }
 
 router.get('/', async (req, res) => {
-  const products = await Product.find({}).sort({ createdAt: -1 });
+  // archived (полностью распродано у всех магазинов) не показываем в
+  // каталоге — но карточка остаётся в базе, её видно через /search.
+  const products = await Product.find({ archived: { $ne: true } }).sort({ createdAt: -1 });
   res.json(await attachAggregatedStock(products));
 });
 
@@ -127,6 +131,7 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
       code,
       sizes,
     });
+    await refreshArchiveStatus(product._id);
 
     const [withStock] = await attachAggregatedStock([product]);
     res.status(201).json(withStock);
@@ -161,6 +166,7 @@ router.post('/:id/stock', requireAuth, requireRole('seller', 'admin', 'superadmi
     product.sizes = [...product.sizes, ...newSizes];
     await product.save();
   }
+  await refreshArchiveStatus(product._id);
 
   res.status(201).json(stock.toJSON());
 });
@@ -190,6 +196,27 @@ router.patch('/stock/:stockId', requireAuth, requireRole('seller', 'admin', 'sup
       await product.save();
     }
   }
+  await refreshArchiveStatus(stock.productId);
+
+  res.json(stock.toJSON());
+});
+
+// Разовая продажа "вживую" (не через сайт) — продавец на странице своего
+// товара выбирает размер и жмёт "Продали", остаток по этому размеру сразу
+// уменьшается на 1. Когда весь сток по карточке заканчивается, она
+// автоматически прячется из каталога (см. refreshArchiveStatus).
+router.patch('/stock/:stockId/sell', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const stock = await ProductStock.findById(req.params.stockId);
+  if (!stock) return res.status(404).json({ error: 'Сток не найден' });
+  if (!canManageStock(req.user, stock)) return res.status(403).json({ error: 'Можно продавать только свой товар' });
+
+  const size = String(req.body.size || '').trim();
+  const row = stock.sizes.find((s) => s.size === size);
+  if (!row || row.qty <= 0) return res.status(400).json({ error: 'Этого размера уже нет в наличии' });
+
+  row.qty -= 1;
+  await stock.save();
+  await refreshArchiveStatus(stock.productId);
 
   res.json(stock.toJSON());
 });
@@ -200,7 +227,44 @@ router.delete('/stock/:stockId', requireAuth, requireRole('seller', 'admin', 'su
   if (!stock) return res.status(404).json({ error: 'Сток не найден' });
   if (!canManageStock(req.user, stock)) return res.status(403).json({ error: 'Можно удалять только свой сток' });
   await stock.deleteOne();
+  await refreshArchiveStatus(stock.productId);
   res.status(204).end();
+});
+
+// Отзывы видит любой посетитель сайта, даже без входа.
+router.get('/:id/reviews', async (req, res) => {
+  const reviews = await Review.find({ productId: req.params.id }).sort({ createdAt: -1 });
+  res.json(reviews.map((r) => r.toJSON()));
+});
+
+// Написать отзыв может любой авторизованный пользователь. Рейтинг и
+// количество отзывов на карточке товара пересчитываются сразу же.
+router.post('/:id/reviews', requireAuth, async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) return res.status(404).json({ error: 'Товар не найден' });
+
+  const rating = Number(req.body.rating);
+  const text = String(req.body.text || '').trim();
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return res.status(400).json({ error: 'Оценка должна быть от 1 до 5' });
+  }
+  if (!text) return res.status(400).json({ error: 'Напишите текст отзыва' });
+  if (text.length > 1000) return res.status(400).json({ error: 'Отзыв слишком длинный' });
+
+  const review = await Review.create({
+    productId: product._id,
+    authorEmail: req.user.email,
+    authorName: req.user.name || req.user.email,
+    rating,
+    text,
+  });
+
+  const allReviews = await Review.find({ productId: product._id });
+  product.reviews = allReviews.length;
+  product.rating = Math.round((allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length) * 10) / 10;
+  await product.save();
+
+  res.status(201).json(review.toJSON());
 });
 
 export default router;
