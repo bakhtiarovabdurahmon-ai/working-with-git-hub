@@ -17,11 +17,11 @@ export default function Product() {
     allProducts,
     getProduct,
     myStockForProduct,
-    removeMyStock,
+    deleteProduct,
     sellSize,
     serverMode,
   } = useStore();
-  const { isAdmin } = useAuth();
+  const { isSeller } = useAuth();
   const product = getProduct(id);
   const [qty, setQty] = useState(1);
   const [size, setSize] = useState(product ? product.sizes[0] : null);
@@ -58,7 +58,7 @@ export default function Product() {
   const orderable = isOrderable(product, serverMode);
   const sizeAvailable = size ? sizeHasStock(product, size) : false;
   const myStock = myStockForProduct(product.id);
-  const canDelete = !product.isDemo && !!myStock;
+  const canDelete = !product.isDemo && isSeller;
   const photos = product.images && product.images.length > 0 ? product.images : product.image ? [product.image] : [];
 
   function handleAddToCart() {
@@ -69,12 +69,11 @@ export default function Product() {
   }
 
   async function handleDelete() {
-    if (!myStock) return;
-    if (!window.confirm(isAdmin ? 'Удалить сток этого магазина по товару?' : 'Убрать этот товар из вашего склада?')) return;
+    if (!window.confirm('Удалить эту карточку товара целиком (вместе с остатками всех магазинов, которые её продают)?')) return;
     setDeleteError(null);
     setDeleting(true);
     try {
-      await removeMyStock(myStock.id);
+      await deleteProduct(product.id);
       navigate('/catalog');
     } catch (err) {
       setDeleteError(err.message);

@@ -170,6 +170,21 @@ export function StoreProvider({ children }) {
     [serverMode, loadProducts, loadMyStock]
   );
 
+  // Полностью удалить карточку товара (вместе со стоком всех магазинов) —
+  // в отличие от removeMyStock выше, это может любой продавец/админ, не
+  // только владелец стока.
+  const deleteProduct = useCallback(
+    async (productId) => {
+      if (serverMode) {
+        await api.deleteProduct(productId);
+        await Promise.all([loadProducts(), loadMyStock()]);
+      } else {
+        setCustomProducts((prev) => prev.filter((p) => p.id !== productId));
+      }
+    },
+    [serverMode, loadProducts, loadMyStock]
+  );
+
   // Разовая продажа "вживую" по одному размеру своего стока — на 1 штуку за
   // клик. Когда сток по карточке кончается, сервер сам прячет её из
   // каталога (см. server/lib/archive.js), поэтому здесь достаточно
@@ -294,6 +309,7 @@ export function StoreProvider({ children }) {
     joinStock,
     updateMyStock,
     removeMyStock,
+    deleteProduct,
     sellSize,
     getReviews,
     addReview,

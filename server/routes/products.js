@@ -251,6 +251,20 @@ router.delete('/stock/:stockId', requireAuth, requireRole('seller', 'admin', 'su
   res.status(204).end();
 });
 
+// Полностью удалить карточку товара вместе со стоком всех магазинов,
+// которые её продают — намеренно без проверки владения: по явной просьбе
+// владельца сайта удалять карточку целиком может любой продавец/админ, а не
+// только тот, кто её завёл (в отличие от DELETE /stock/:stockId выше,
+// который убирает только сток одного конкретного магазина).
+router.delete('/:id', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
+  const product = await Product.findById(req.params.id);
+  if (!product) return res.status(404).json({ error: 'Товар не найден' });
+  await ProductStock.deleteMany({ productId: product._id });
+  await Review.deleteMany({ productId: product._id });
+  await product.deleteOne();
+  res.status(204).end();
+});
+
 // Отзывы видит любой посетитель сайта, даже без входа.
 router.get('/:id/reviews', async (req, res) => {
   const reviews = await Review.find({ productId: req.params.id }).sort({ createdAt: -1 });
