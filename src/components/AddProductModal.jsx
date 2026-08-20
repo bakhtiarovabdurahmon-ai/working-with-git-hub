@@ -5,6 +5,7 @@ import { useAuth } from '../auth.jsx';
 import { api } from '../api.js';
 
 const MAX_IMAGE_SIDE = 640;
+const MAX_IMAGES = 4;
 
 function resizeImageToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -91,7 +92,7 @@ export default function AddProductModal({ onClose }) {
   const [discount, setDiscount] = useState('');
   const [sizeQty, setSizeQty] = useState({});
   const [description, setDescription] = useState('');
-  const [imageData, setImageData] = useState(null);
+  const [imagesData, setImagesData] = useState([]);
   const [imageError, setImageError] = useState(null);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
@@ -133,14 +134,20 @@ export default function AddProductModal({ onClose }) {
 
   async function handleImageChange(e) {
     const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // позволяет выбрать тот же файл ещё раз (например, сфотографировать снова)
     if (!file) return;
+    if (imagesData.length >= MAX_IMAGES) return;
     setImageError(null);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
-      setImageData(dataUrl);
+      setImagesData((prev) => [...prev, dataUrl]);
     } catch (err) {
       setImageError(err.message);
     }
+  }
+
+  function removeImage(idx) {
+    setImagesData((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function buildSizesPayload() {
@@ -179,8 +186,9 @@ export default function AddProductModal({ onClose }) {
         discount: discountNum,
         rating: 5,
         reviews: 0,
-        emoji: imageData ? null : '🛍️',
-        image: imageData,
+        emoji: imagesData.length ? null : '🛍️',
+        image: imagesData[0] || null,
+        images: imagesData,
         color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 92%)`,
         description: description.trim() || `${title.trim()}. Добавлено продавцом.`,
         sizes,
@@ -300,13 +308,25 @@ export default function AddProductModal({ onClose }) {
             <SizeQtyPicker availableSizes={availableSizes} sizeQty={sizeQty} onChange={setSizeQty} />
 
             <div className="form-row">
-              <label className="form-label">Фото товара (необязательно)</label>
-              <label className="pay-upload-box has-file">
-                <span className="pay-upload-icon">📷</span>
-                <span>{imageData ? '✓ Фото выбрано' : 'Нажмите, чтобы выбрать фото'}</span>
-                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
-              </label>
-              {imageData ? <img src={imageData} alt="" className="form-image-preview" /> : null}
+              <label className="form-label">Фото товара (необязательно, до {MAX_IMAGES})</label>
+              <div className="image-picker-grid">
+                {imagesData.map((src, i) => (
+                  <div className="image-picker-thumb" key={i}>
+                    <img src={src} alt="" />
+                    <button type="button" className="image-picker-remove" onClick={() => removeImage(i)} aria-label="Убрать фото">
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                {imagesData.length < MAX_IMAGES ? (
+                  <label className="pay-upload-box has-file image-picker-add">
+                    <span className="pay-upload-icon">📷</span>
+                    <span>Добавить фото ({imagesData.length}/{MAX_IMAGES})</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageChange} />
+                  </label>
+                ) : null}
+              </div>
+              <p className="pay-sub">Сфотографируйте товар с разных ракурсов — все фото увидят покупатели на странице товара.</p>
               {imageError ? <div className="form-error">{imageError}</div> : null}
             </div>
 

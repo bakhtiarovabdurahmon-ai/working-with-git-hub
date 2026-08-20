@@ -93,6 +93,22 @@ function parseSizes(input) {
   return sizes;
 }
 
+const MAX_PRODUCT_IMAGES = 4;
+
+// До 4 фото на карточку — продавец фотографирует товар с разных ракурсов.
+// Каждая картинка уже уменьшена и сжата на клиенте (см. resizeImageToDataUrl
+// в AddProductModal.jsx), так что здесь просто ограничиваем количество и
+// подстраховываемся на случай подделанного запроса без ресайза.
+function parseImages(input) {
+  if (input === undefined || input === null) return [];
+  if (!Array.isArray(input)) return null;
+  if (input.length > MAX_PRODUCT_IMAGES) return null;
+  for (const img of input) {
+    if (typeof img !== 'string' || !img.startsWith('data:image/') || img.length > 2_000_000) return null;
+  }
+  return input;
+}
+
 // Новая карточка товара + первая стоковая строка (тот, кто создаёт —
 // первый продавец на ней).
 router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), async (req, res) => {
@@ -108,6 +124,10 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
     if (discountNum < 0 || discountNum > 90) return res.status(400).json({ error: 'Скидка должна быть от 0 до 90%' });
     if (!sizes || sizes.length === 0) return res.status(400).json({ error: 'Укажите хотя бы один размер и количество' });
 
+    const images = parseImages(req.body.images);
+    if (images === null) return res.status(400).json({ error: `Можно приложить не больше ${MAX_PRODUCT_IMAGES} фото` });
+    const cover = images[0] || (typeof req.body.image === 'string' ? req.body.image : null);
+
     const oldPrice = discountNum > 0 ? Math.round(priceNum / (1 - discountNum / 100)) : null;
     const product = await Product.create({
       title,
@@ -116,8 +136,9 @@ router.post('/', requireAuth, requireRole('seller', 'admin', 'superadmin'), asyn
       price: priceNum,
       oldPrice,
       discount: discountNum,
-      emoji: typeof req.body.image === 'string' && req.body.image ? null : req.body.emoji || '🛍️',
-      image: typeof req.body.image === 'string' ? req.body.image : null,
+      emoji: cover ? null : req.body.emoji || '🛍️',
+      image: cover,
+      images,
       color: typeof req.body.color === 'string' ? req.body.color : undefined,
       description: req.body.description ? String(req.body.description).trim() : '',
       sizes: sizes.map((s) => s.size),

@@ -30,6 +30,7 @@ export default function Product() {
   const [deleteError, setDeleteError] = useState(null);
   const [sellingSize, setSellingSize] = useState(null);
   const [sellError, setSellError] = useState(null);
+  const [activePhoto, setActivePhoto] = useState(0);
 
   useEffect(() => {
     if (product) document.title = product.title + ' — ОдеждаPRO';
@@ -38,6 +39,7 @@ export default function Product() {
   useEffect(() => {
     setQty(1);
     setSize(product ? product.sizes[0] : null);
+    setActivePhoto(0);
   }, [id]);
 
   if (!product) {
@@ -57,6 +59,7 @@ export default function Product() {
   const sizeAvailable = size ? sizeHasStock(product, size) : false;
   const myStock = myStockForProduct(product.id);
   const canDelete = !product.isDemo && !!myStock;
+  const photos = product.images && product.images.length > 0 ? product.images : product.image ? [product.image] : [];
 
   function handleAddToCart() {
     if (!orderable || !sizeAvailable) return;
@@ -100,13 +103,29 @@ export default function Product() {
         <span>{product.title}</span>
       </div>
       <div className="product-page">
-        <div className="product-gallery" style={{ background: product.image ? '#fff' : product.color }}>
-          {product.image ? (
-            <img className="product-gallery-photo" src={product.image} alt={product.title} />
-          ) : (
-            <span className="product-gallery-emoji">{product.emoji}</span>
-          )}
-          {product.discount ? <span className="badge-discount large">-{product.discount}%</span> : null}
+        <div className="product-gallery-wrap">
+          <div className="product-gallery" style={{ background: photos.length > 0 ? '#fff' : product.color }}>
+            {photos.length > 0 ? (
+              <img className="product-gallery-photo" src={photos[activePhoto] || photos[0]} alt={product.title} />
+            ) : (
+              <span className="product-gallery-emoji">{product.emoji}</span>
+            )}
+            {product.discount ? <span className="badge-discount large">-{product.discount}%</span> : null}
+          </div>
+          {photos.length > 1 ? (
+            <div className="product-gallery-thumbs">
+              {photos.map((src, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={`product-gallery-thumb ${i === activePhoto ? 'active' : ''}`}
+                  onClick={() => setActivePhoto(i)}
+                >
+                  <img src={src} alt="" />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="product-info">
           <h1>{product.title}</h1>

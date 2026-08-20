@@ -47,7 +47,7 @@ export default function Header() {
         </button>
         {isSeller ? (
           <Link to="/orders" className="burger" style={{ background: 'var(--accent)' }}>
-            👥 Клиенты
+            <span className="burger-icon">👥</span> Клиенты
           </Link>
         ) : null}
         <form className="search-form" onSubmit={handleSubmit}>

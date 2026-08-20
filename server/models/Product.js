@@ -15,7 +15,12 @@ const productSchema = new mongoose.Schema(
     rating: { type: Number, default: 5 },
     reviews: { type: Number, default: 0 },
     emoji: { type: String, default: null },
+    // image — обложка (первое фото), используется везде, где нужна одна
+    // картинка (карточка в каталоге, промо-полоса, корзина). images — вся
+    // галерея, которую продавец мог сфотографировать и добавить (до 4 фото),
+    // показывается только на странице самого товара.
     image: { type: String, default: null },
+    images: { type: [String], default: [] },
     color: { type: String, default: '#f4f4f6' },
     description: { type: String, default: '' },
     // Размеры, в которых этот товар когда-либо заводили на склад хотя бы
