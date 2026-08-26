@@ -1177,76 +1177,73 @@ a {
     font-size: 56px;
   }
 
+  /* Две карточки в ряд, а не четыре — на узком экране в 4 колонки
+     название товара обрезалось в одно-два слова и не читалось. */
   .product-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 7px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 
   .product-card {
-    border-radius: 8px;
+    border-radius: 10px;
   }
 
   .product-card-media {
-    height: 70px;
-    font-size: 26px;
+    height: 150px;
+    font-size: 44px;
   }
 
   .fav-btn {
-    width: 20px;
-    height: 20px;
-    font-size: 11px;
-    top: 4px;
-    right: 4px;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    top: 6px;
+    right: 6px;
   }
 
   .badge-discount {
-    font-size: 9px;
-    padding: 2px 4px;
-    top: 4px;
-    left: 4px;
-    border-radius: 4px;
+    font-size: 11px;
+    padding: 3px 6px;
+    top: 6px;
+    left: 6px;
   }
 
   .product-card-body {
-    padding: 5px;
-    gap: 3px;
+    padding: 10px;
+    gap: 6px;
   }
 
   .product-card-title {
-    font-size: 10px;
-    min-height: 24px;
+    font-size: 13px;
+    min-height: 34px;
     -webkit-line-clamp: 2;
   }
 
   .product-card-rating {
-    font-size: 9px;
+    font-size: 11.5px;
   }
 
   .product-card-rating .star {
-    font-size: 9px;
-  }
-
-  .rating-reviews {
-    display: none;
+    font-size: 11.5px;
   }
 
   .product-card-price {
     flex-wrap: wrap;
-    gap: 3px;
+    gap: 5px;
   }
 
   .price-current {
-    font-size: 11.5px;
+    font-size: 15px;
   }
 
   .price-old {
-    font-size: 9px;
+    font-size: 11.5px;
   }
 
   .btn-add-cart {
-    font-size: 9px;
-    padding: 5px 4px;
-    margin-top: 3px;
+    font-size: 12.5px;
+    padding: 7px 6px;
+    margin-top: 4px;
   }
 
   .cat-tiles {
