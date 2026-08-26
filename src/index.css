@@ -1639,6 +1639,43 @@ a {
   font-size: 20px;
 }
 
+.photo-editor-modal {
+  text-align: center;
+}
+
+.photo-editor-canvas-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  margin-bottom: 14px;
+}
+
+.photo-editor-canvas {
+  touch-action: none;
+  border-radius: 10px;
+  cursor: grab;
+  max-width: 100%;
+}
+
+.photo-editor-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.photo-editor-slider span {
+  flex: 0 0 62px;
+}
+
+.photo-editor-slider input[type='range'] {
+  flex: 1;
+}
+
 .form-image-preview {
   display: block;
   width: 100%;

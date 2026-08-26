@@ -3,6 +3,7 @@ import { CATEGORIES, sizesForCategory } from '../data.js';
 import { useStore, formatPrice } from '../store.jsx';
 import { useAuth } from '../auth.jsx';
 import { api } from '../api.js';
+import PhotoEditor from './PhotoEditor.jsx';
 
 const MAX_IMAGE_SIDE = 640;
 
@@ -93,6 +94,7 @@ export default function AddProductModal({ onClose }) {
   const [description, setDescription] = useState('');
   const [imagesData, setImagesData] = useState([]);
   const [imageError, setImageError] = useState(null);
+  const [editingSrc, setEditingSrc] = useState(null);
   const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -138,7 +140,7 @@ export default function AddProductModal({ onClose }) {
     setImageError(null);
     try {
       const dataUrl = await resizeImageToDataUrl(file);
-      setImagesData((prev) => [...prev, dataUrl]);
+      setEditingSrc(dataUrl); // открываем редактор — обрезать/повернуть/поправить свет перед добавлением
     } catch (err) {
       setImageError(err.message);
     }
@@ -339,6 +341,16 @@ export default function AddProductModal({ onClose }) {
           </form>
         )}
       </div>
+      {editingSrc ? (
+        <PhotoEditor
+          src={editingSrc}
+          onCancel={() => setEditingSrc(null)}
+          onDone={(finalUrl) => {
+            setImagesData((prev) => [...prev, finalUrl]);
+            setEditingSrc(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
